@@ -1,0 +1,14 @@
+{
+  "name": "aryana-cafe-backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "express": "^4.17.1",
+    "mongoose": "^6.0.0",
+    "jsonwebtoken": "^8.5.1",
+    "bcryptjs": "^2.4.3",
+    "socket.io": "^4.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^10.0.0"
+  }
+}

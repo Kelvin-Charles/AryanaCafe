@@ -2,66 +2,50 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const { sequelize } = require('./models');
-
-// Import routes
-const authRoutes = require('./routes/auth');
-const menuRoutes = require('./routes/menu');
-const reservationRoutes = require('./routes/reservations');
-const orderRoutes = require('./routes/orders');
+const { sequelize } = require('./config/database');
 
 const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json());
 app.use(morgan('dev'));
+app.use(express.json());
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/menu', menuRoutes);
-app.use('/api/reservations', reservationRoutes);
-app.use('/api/orders', orderRoutes);
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/menu', require('./routes/menu'));
+app.use('/api/reservations', require('./routes/reservations'));
+app.use('/api/orders', require('./routes/orders'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ error: 'Something broke!' });
+  res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// Connect to MySQL and start server
+const PORT = process.env.PORT || 5001;
+
 const startServer = async () => {
   try {
-    // Test the connection first
+    // Test the connection
     await sequelize.authenticate();
-    console.log('Connected to MySQL database');
+    console.log('Database connection has been established successfully.');
 
-    // Drop existing tables
+    // Drop all tables and recreate them
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
     await sequelize.drop();
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
-    console.log('All tables dropped');
-    
-    // Create tables in correct order
-    await sequelize.sync();
-    console.log('Database synchronized');
 
-    // Create initial dietary options
-    const { DietaryOption } = require('./models');
-    await DietaryOption.bulkCreate([
-      { name: 'Vegetarian', description: 'No meat or fish' },
-      { name: 'Vegan', description: 'No animal products' },
-      { name: 'Gluten-free', description: 'No gluten-containing ingredients' },
-      { name: 'Dairy-free', description: 'No dairy products' }
-    ], { ignoreDuplicates: true });
-    console.log('Initial dietary options created');
+    // Sync database
+    await sequelize.sync({ force: false });
+    console.log('Database synced successfully');
 
-    const PORT = process.env.PORT || 5000;
+    // Start server
     app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+      console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {
-    console.error('Error starting server:', error.message);
+    console.error('Error starting server:', error);
     process.exit(1);
   }
 };

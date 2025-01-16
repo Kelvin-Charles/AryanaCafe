@@ -1,33 +1,36 @@
 const express = require('express');
 const router = express.Router();
-const MenuItem = require('../models/MenuItem');
+const { MenuItem } = require('../models');
 const { auth, adminAuth } = require('../middleware/auth');
+const { Op } = require('sequelize');
 
 // Get all menu items
 router.get('/', async (req, res) => {
   try {
     const { category, dietary } = req.query;
-    let query = {};
+    let where = {};
 
     if (category && category !== 'all') {
-      query.category = category;
+      where.category = category;
     }
 
     if (dietary && dietary !== 'all') {
-      query.dietary = dietary;
+      where.dietary = {
+        [Op.contains]: [dietary]
+      };
     }
 
-    const menuItems = await MenuItem.find(query);
+    const menuItems = await MenuItem.findAll({ where });
     res.json(menuItems);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Get menu item by ID
+// Get menu item by id
 router.get('/:id', async (req, res) => {
   try {
-    const menuItem = await MenuItem.findById(req.params.id);
+    const menuItem = await MenuItem.findByPk(req.params.id);
     if (!menuItem) {
       return res.status(404).json({ error: 'Menu item not found' });
     }
@@ -40,8 +43,7 @@ router.get('/:id', async (req, res) => {
 // Create menu item (admin only)
 router.post('/', adminAuth, async (req, res) => {
   try {
-    const menuItem = new MenuItem(req.body);
-    await menuItem.save();
+    const menuItem = await MenuItem.create(req.body);
     res.status(201).json(menuItem);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
@@ -51,14 +53,11 @@ router.post('/', adminAuth, async (req, res) => {
 // Update menu item (admin only)
 router.put('/:id', adminAuth, async (req, res) => {
   try {
-    const menuItem = await MenuItem.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const menuItem = await MenuItem.findByPk(req.params.id);
     if (!menuItem) {
       return res.status(404).json({ error: 'Menu item not found' });
     }
+    await menuItem.update(req.body);
     res.json(menuItem);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
@@ -68,29 +67,12 @@ router.put('/:id', adminAuth, async (req, res) => {
 // Delete menu item (admin only)
 router.delete('/:id', adminAuth, async (req, res) => {
   try {
-    const menuItem = await MenuItem.findByIdAndDelete(req.params.id);
+    const menuItem = await MenuItem.findByPk(req.params.id);
     if (!menuItem) {
       return res.status(404).json({ error: 'Menu item not found' });
     }
+    await menuItem.destroy();
     res.json({ message: 'Menu item deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Update menu item availability (admin only)
-router.patch('/:id/availability', adminAuth, async (req, res) => {
-  try {
-    const { available } = req.body;
-    const menuItem = await MenuItem.findByIdAndUpdate(
-      req.params.id,
-      { available },
-      { new: true }
-    );
-    if (!menuItem) {
-      return res.status(404).json({ error: 'Menu item not found' });
-    }
-    res.json(menuItem);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }

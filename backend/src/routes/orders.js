@@ -1,27 +1,37 @@
 const express = require('express');
 const router = express.Router();
-const Order = require('../models/Order');
-const MenuItem = require('../models/MenuItem');
+const { Order, OrderItem, MenuItem } = require('../models');
 const { auth, adminAuth } = require('../middleware/auth');
+const { Op } = require('sequelize');
 
 // Get all orders (admin only)
 router.get('/', adminAuth, async (req, res) => {
   try {
     const { status, orderType } = req.query;
-    let query = {};
+    let where = {};
 
     if (status) {
-      query.status = status;
+      where.status = status;
     }
 
     if (orderType) {
-      query.orderType = orderType;
+      where.orderType = orderType;
     }
 
-    const orders = await Order.find(query)
-      .populate('user', 'name email')
-      .populate('items.menuItem')
-      .sort({ createdAt: -1 });
+    const orders = await Order.findAll({
+      where,
+      include: [
+        {
+          model: OrderItem,
+          as: 'items',
+          include: [{
+            model: MenuItem,
+            attributes: ['name', 'price']
+          }]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
     res.json(orders);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
@@ -31,9 +41,20 @@ router.get('/', adminAuth, async (req, res) => {
 // Get user's orders
 router.get('/my-orders', auth, async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user._id })
-      .populate('items.menuItem')
-      .sort({ createdAt: -1 });
+    const orders = await Order.findAll({
+      where: { userId: req.user.id },
+      include: [
+        {
+          model: OrderItem,
+          as: 'items',
+          include: [{
+            model: MenuItem,
+            attributes: ['name', 'price']
+          }]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
     res.json(orders);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
@@ -46,43 +67,58 @@ router.post('/', auth, async (req, res) => {
     const { items, orderType, tableNumber, deliveryAddress, specialRequests } = req.body;
 
     // Validate items and calculate total
+    let totalAmount = 0;
     const orderItems = await Promise.all(items.map(async (item) => {
-      const menuItem = await MenuItem.findById(item.menuItem);
+      const menuItem = await MenuItem.findByPk(item.menuItemId);
       if (!menuItem) {
-        throw new Error(`Menu item not found: ${item.menuItem}`);
+        throw new Error(`Menu item not found: ${item.menuItemId}`);
       }
       if (!menuItem.available) {
         throw new Error(`Menu item not available: ${menuItem.name}`);
       }
+      totalAmount += menuItem.price * item.quantity;
       return {
-        menuItem: item.menuItem,
+        menuItemId: item.menuItemId,
         quantity: item.quantity,
         price: menuItem.price,
         specialInstructions: item.specialInstructions
       };
     }));
 
-    const order = new Order({
-      user: req.user._id,
-      items: orderItems,
+    const order = await Order.create({
+      userId: req.user.id,
       orderType,
       tableNumber,
       deliveryAddress,
-      specialRequests
+      specialRequests,
+      totalAmount,
+      status: 'pending',
+      paymentStatus: 'pending'
     });
 
-    // Calculate estimated delivery time
-    const now = new Date();
-    const estimatedTime = new Date(now.getTime() + (30 * 60000)); // 30 minutes from now
-    order.estimatedDeliveryTime = estimatedTime;
+    // Create order items
+    await Promise.all(orderItems.map(item => 
+      OrderItem.create({
+        ...item,
+        orderId: order.id
+      })
+    ));
 
-    await order.save();
-    
-    const populatedOrder = await Order.findById(order._id)
-      .populate('items.menuItem')
-      .populate('user', 'name email');
-    
-    res.status(201).json(populatedOrder);
+    // Fetch the complete order with items
+    const completeOrder = await Order.findByPk(order.id, {
+      include: [
+        {
+          model: OrderItem,
+          as: 'items',
+          include: [{
+            model: MenuItem,
+            attributes: ['name', 'price']
+          }]
+        }
+      ]
+    });
+
+    res.status(201).json(completeOrder);
   } catch (error) {
     res.status(500).json({ error: error.message || 'Server error' });
   }
@@ -92,16 +128,24 @@ router.post('/', auth, async (req, res) => {
 router.patch('/:id/status', adminAuth, async (req, res) => {
   try {
     const { status } = req.body;
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    ).populate('items.menuItem');
+    const order = await Order.findByPk(req.params.id, {
+      include: [
+        {
+          model: OrderItem,
+          as: 'items',
+          include: [{
+            model: MenuItem,
+            attributes: ['name', 'price']
+          }]
+        }
+      ]
+    });
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
+    await order.update({ status });
     res.json(order);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
@@ -112,8 +156,20 @@ router.patch('/:id/status', adminAuth, async (req, res) => {
 router.patch('/:id/cancel', auth, async (req, res) => {
   try {
     const order = await Order.findOne({
-      _id: req.params.id,
-      user: req.user._id
+      where: {
+        id: req.params.id,
+        userId: req.user.id
+      },
+      include: [
+        {
+          model: OrderItem,
+          as: 'items',
+          include: [{
+            model: MenuItem,
+            attributes: ['name', 'price']
+          }]
+        }
+      ]
     });
 
     if (!order) {
@@ -124,32 +180,15 @@ router.patch('/:id/cancel', auth, async (req, res) => {
       return res.status(400).json({ error: 'Order is already cancelled' });
     }
 
-    if (['preparing', 'ready', 'delivered'].includes(order.status)) {
+    if (!['pending', 'preparing'].includes(order.status)) {
       return res.status(400).json({ error: 'Cannot cancel order in current status' });
     }
 
-    order.status = 'cancelled';
-    await order.save();
-    res.json(order);
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Update payment status (admin only)
-router.patch('/:id/payment', adminAuth, async (req, res) => {
-  try {
-    const { paymentStatus } = req.body;
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { paymentStatus },
-      { new: true }
-    ).populate('items.menuItem');
-
-    if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
-
+    await order.update({ 
+      status: 'cancelled',
+      paymentStatus: order.paymentStatus === 'paid' ? 'refund_pending' : 'cancelled'
+    });
+    
     res.json(order);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });

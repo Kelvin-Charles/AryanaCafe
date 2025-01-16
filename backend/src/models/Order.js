@@ -1,76 +1,59 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const { sequelize } = require('../config/database');
 
 const Order = sequelize.define('Order', {
-  user_id: {
+  id: {
     type: DataTypes.INTEGER,
-    allowNull: true,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  userId: {
+    type: DataTypes.INTEGER,
     references: {
-      model: 'Users',
+      model: 'users',
       key: 'id'
-    }
-  },
-  guest_name: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  guest_phone: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  guest_email: {
-    type: DataTypes.STRING,
-    allowNull: true,
-    validate: {
-      isEmail: true
     }
   },
   status: {
     type: DataTypes.ENUM('pending', 'preparing', 'ready', 'delivered', 'cancelled'),
     defaultValue: 'pending'
   },
-  order_type: {
+  orderType: {
     type: DataTypes.ENUM('dine-in', 'takeaway', 'delivery'),
     allowNull: false
   },
-  table_number: {
-    type: DataTypes.INTEGER,
-    allowNull: true
-  },
-  total_amount: {
+  totalAmount: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
     validate: {
       min: 0
     }
   },
-  payment_status: {
+  paymentStatus: {
     type: DataTypes.ENUM('pending', 'paid', 'failed'),
     defaultValue: 'pending'
   },
-  payment_method: {
-    type: DataTypes.ENUM('cash', 'card', 'online'),
-    defaultValue: 'cash'
+  tableNumber: {
+    type: DataTypes.INTEGER,
+    validate: {
+      min: 1
+    }
   },
-  special_requests: {
-    type: DataTypes.TEXT,
-    allowNull: true
+  deliveryAddress: {
+    type: DataTypes.JSON
   },
-  estimated_delivery_time: {
-    type: DataTypes.DATE,
-    allowNull: true
+  specialRequests: {
+    type: DataTypes.TEXT
+  },
+  guestInfo: {
+    type: DataTypes.JSON
+  },
+  estimatedDeliveryTime: {
+    type: DataTypes.DATE
   }
 }, {
-  timestamps: true,
-  createdAt: 'created_at',
-  updatedAt: 'updated_at',
-  validate: {
-    userOrGuest() {
-      if (!this.user_id && !this.guest_phone) {
-        throw new Error('Either user_id or guest_phone must be provided');
-      }
-    }
-  }
+  tableName: 'orders',
+  timestamps: true
 });
 
 module.exports = Order; 

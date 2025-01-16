@@ -1,7 +1,12 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const { sequelize } = require('../config/database');
 
 const MenuItem = sequelize.define('MenuItem', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
   name: {
     type: DataTypes.STRING,
     allowNull: false
@@ -25,21 +30,24 @@ const MenuItem = sequelize.define('MenuItem', {
     type: DataTypes.STRING,
     allowNull: false
   },
-  available: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true
+  dietary: {
+    type: DataTypes.JSON,
+    defaultValue: []
   },
-  preparation_time: {
+  preparationTime: {
     type: DataTypes.INTEGER,
     allowNull: false,
     validate: {
       min: 0
     }
+  },
+  available: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
   }
 }, {
-  timestamps: true,
-  createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  tableName: 'menu_items',
+  timestamps: true
 });
 
 module.exports = MenuItem; 

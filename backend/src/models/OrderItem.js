@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const { sequelize } = require('../config/database');
 
 const OrderItem = sequelize.define('OrderItem', {
   id: {
@@ -7,25 +7,21 @@ const OrderItem = sequelize.define('OrderItem', {
     primaryKey: true,
     autoIncrement: true
   },
-  order_id: {
+  orderId: {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
       model: 'orders',
       key: 'id'
-    },
-    onUpdate: 'CASCADE',
-    onDelete: 'CASCADE'
+    }
   },
-  menu_item_id: {
+  menuItemId: {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
       model: 'menu_items',
       key: 'id'
-    },
-    onUpdate: 'CASCADE',
-    onDelete: 'RESTRICT'
+    }
   },
   quantity: {
     type: DataTypes.INTEGER,
@@ -41,9 +37,8 @@ const OrderItem = sequelize.define('OrderItem', {
       min: 0
     }
   },
-  special_instructions: {
-    type: DataTypes.TEXT,
-    allowNull: true
+  specialInstructions: {
+    type: DataTypes.TEXT
   }
 }, {
   tableName: 'order_items',

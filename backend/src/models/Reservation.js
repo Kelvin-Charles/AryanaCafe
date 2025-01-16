@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const { sequelize } = require('../config/database');
 
 const Reservation = sequelize.define('Reservation', {
   id: {
@@ -7,11 +7,11 @@ const Reservation = sequelize.define('Reservation', {
     primaryKey: true,
     autoIncrement: true
   },
-  user_id: {
+  userId: {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'Users',
+      model: 'users',
       key: 'id'
     }
   },
@@ -20,7 +20,7 @@ const Reservation = sequelize.define('Reservation', {
     allowNull: false
   },
   time: {
-    type: DataTypes.TIME,
+    type: DataTypes.STRING,
     allowNull: false
   },
   guests: {
@@ -35,54 +35,17 @@ const Reservation = sequelize.define('Reservation', {
     type: DataTypes.ENUM('pending', 'confirmed', 'cancelled'),
     defaultValue: 'pending'
   },
-  special_requests: {
-    type: DataTypes.TEXT,
-    allowNull: true
+  specialRequests: {
+    type: DataTypes.TEXT
   },
-  contact_name: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  contact_email: {
-    type: DataTypes.STRING,
+  contactInfo: {
+    type: DataTypes.JSON,
     allowNull: false,
-    validate: {
-      isEmail: true
-    }
-  },
-  contact_phone: {
-    type: DataTypes.STRING,
-    allowNull: false
+    defaultValue: {}
   }
 }, {
   tableName: 'reservations',
-  timestamps: true,
-  createdAt: 'created_at',
-  updatedAt: 'updated_at',
-  indexes: [
-    {
-      name: 'reservation_date_time_status',
-      unique: true,
-      fields: ['date', 'time', 'status']
-    }
-  ]
-});
-
-// Add validation hook to prevent double booking
-Reservation.addHook('beforeValidate', async (reservation) => {
-  if (reservation.status === 'confirmed') {
-    const existingReservation = await Reservation.findOne({
-      where: {
-        date: reservation.date,
-        time: reservation.time,
-        status: 'confirmed',
-        id: { [DataTypes.Op.ne]: reservation.id }
-      }
-    });
-    if (existingReservation) {
-      throw new Error('This time slot is already booked');
-    }
-  }
+  timestamps: true
 });
 
 module.exports = Reservation; 

@@ -1,76 +1,31 @@
-const { Sequelize } = require('sequelize');
-const sequelize = require('../config/database');
-
-// Import models
 const User = require('./User');
 const MenuItem = require('./MenuItem');
-const DietaryOption = require('./DietaryOption');
-const Reservation = require('./Reservation');
 const Order = require('./Order');
 const OrderItem = require('./OrderItem');
+const Reservation = require('./Reservation');
 
-// Initialize models
-const models = {
-  User,
-  MenuItem,
-  DietaryOption,
-  Reservation,
-  Order,
-  OrderItem
-};
+// User associations
+User.hasMany(Order, { foreignKey: 'userId' });
+User.hasMany(Reservation, { foreignKey: 'userId' });
 
-// MenuItem - DietaryOption associations
-MenuItem.belongsToMany(DietaryOption, {
-  through: 'menu_item_dietary_options',
-  foreignKey: 'menu_item_id',
-  otherKey: 'dietary_option_id'
-});
+// Order associations
+Order.belongsTo(User, { foreignKey: 'userId' });
+Order.hasMany(OrderItem, { foreignKey: 'orderId', as: 'items' });
 
-DietaryOption.belongsToMany(MenuItem, {
-  through: 'menu_item_dietary_options',
-  foreignKey: 'dietary_option_id',
-  otherKey: 'menu_item_id'
-});
+// OrderItem associations
+OrderItem.belongsTo(Order, { foreignKey: 'orderId' });
+OrderItem.belongsTo(MenuItem, { foreignKey: 'menuItemId' });
 
-// User - Reservation associations
-User.hasMany(Reservation, {
-  foreignKey: 'user_id'
-});
-Reservation.belongsTo(User, {
-  foreignKey: 'user_id'
-});
+// MenuItem associations
+MenuItem.hasMany(OrderItem, { foreignKey: 'menuItemId' });
 
-// User - Order associations
-User.hasMany(Order, {
-  foreignKey: 'user_id'
-});
-Order.belongsTo(User, {
-  foreignKey: 'user_id'
-});
-
-// Order - OrderItem - MenuItem associations
-Order.hasMany(OrderItem, {
-  foreignKey: 'order_id'
-});
-OrderItem.belongsTo(Order, {
-  foreignKey: 'order_id'
-});
-
-MenuItem.hasMany(OrderItem, {
-  foreignKey: 'menu_item_id'
-});
-OrderItem.belongsTo(MenuItem, {
-  foreignKey: 'menu_item_id'
-});
-
-// Add Sequelize instance to models
-Object.values(models).forEach(model => {
-  if (model.associate) {
-    model.associate(models);
-  }
-});
+// Reservation associations
+Reservation.belongsTo(User, { foreignKey: 'userId' });
 
 module.exports = {
-  sequelize,
-  ...models
+  User,
+  MenuItem,
+  Order,
+  OrderItem,
+  Reservation
 }; 

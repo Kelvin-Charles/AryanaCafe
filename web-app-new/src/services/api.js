@@ -68,14 +68,11 @@ const apiMethods = {
   },
   reservations: {
     getAll: () => api.get('/reservations'),
-    getById: (id) => api.get(`/reservations/${id}`),
-    create: (reservationData) => api.post('/reservations', reservationData),
-    update: (id, reservationData) => api.put(`/reservations/${id}`, reservationData),
-    updateStatus: (id, status) => api.patch(`/reservations/${id}/status`, { status }),
-    delete: (id) => api.delete(`/reservations/${id}`),
     getMyReservations: () => api.get('/reservations/my-reservations'),
-    checkAvailability: (date, time, partySize) => 
-      api.get('/reservations/check-availability', { params: { date, time, partySize } })
+    create: (data) => api.post('/reservations', data),
+    cancel: (id) => api.patch(`/reservations/${id}/cancel`),
+    delete: (id) => api.delete(`/reservations/${id}`),
+    checkAvailability: (date, time) => api.get('/reservations/check-availability', { params: { date, time } })
   },
   users: {
     getAll: () => api.get('/users'),
@@ -120,8 +117,7 @@ const apiMethods = {
     add: (menuItemId, quantity) => api.post('/cart/items', { menuItemId, quantity }),
     update: (menuItemId, quantity) => api.put('/cart/items', { menuItemId, quantity }),
     remove: (menuItemId) => api.delete(`/cart/items/${menuItemId}`),
-    clear: () => api.delete('/cart'),
-    checkout: (paymentData) => api.post('/cart/checkout', paymentData)
+    clear: () => api.delete('/cart')
   }
 };
 

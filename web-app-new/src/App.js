@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { CartProvider } from './contexts/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Public Pages
@@ -41,113 +42,115 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/menu" element={<Menu />} />
+        <CartProvider>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/menu" element={<Menu />} />
 
-          {/* Admin Routes */}
-          <Route path="/admin" element={
-            <ProtectedRoute requiredRole="admin">
-              <AdminDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/menu" element={
-            <ProtectedRoute requiredRole="admin">
-              <ManageMenu />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/orders" element={
-            <ProtectedRoute requiredRole="admin">
-              <ManageOrders />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/reservations" element={
-            <ProtectedRoute requiredRole="admin">
-              <ManageReservations />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/users" element={
-            <ProtectedRoute requiredRole="admin">
-              <ManageUsers />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/reports" element={
-            <ProtectedRoute requiredRole="admin">
-              <Reports />
-            </ProtectedRoute>
-          } />
+            {/* Admin Routes */}
+            <Route path="/admin" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/menu" element={
+              <ProtectedRoute requiredRole="admin">
+                <ManageMenu />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/orders" element={
+              <ProtectedRoute requiredRole="admin">
+                <ManageOrders />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/reservations" element={
+              <ProtectedRoute requiredRole="admin">
+                <ManageReservations />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/users" element={
+              <ProtectedRoute requiredRole="admin">
+                <ManageUsers />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/reports" element={
+              <ProtectedRoute requiredRole="admin">
+                <Reports />
+              </ProtectedRoute>
+            } />
 
-          {/* Manager Routes */}
-          <Route path="/manager" element={
-            <ProtectedRoute requiredRole="manager">
-              <ManagerDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/manager/schedule" element={
-            <ProtectedRoute requiredRole="manager">
-              <StaffSchedule />
-            </ProtectedRoute>
-          } />
-          <Route path="/manager/inventory" element={
-            <ProtectedRoute requiredRole="manager">
-              <InventoryManagement />
-            </ProtectedRoute>
-          } />
+            {/* Manager Routes */}
+            <Route path="/manager" element={
+              <ProtectedRoute requiredRole="manager">
+                <ManagerDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/manager/schedule" element={
+              <ProtectedRoute requiredRole="manager">
+                <StaffSchedule />
+              </ProtectedRoute>
+            } />
+            <Route path="/manager/inventory" element={
+              <ProtectedRoute requiredRole="manager">
+                <InventoryManagement />
+              </ProtectedRoute>
+            } />
 
-          {/* Waiter Routes */}
-          <Route path="/waiter" element={
-            <ProtectedRoute requiredRole="waiter">
-              <WaiterDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/waiter/tables" element={
-            <ProtectedRoute requiredRole="waiter">
-              <TableManagement />
-            </ProtectedRoute>
-          } />
-          <Route path="/waiter/orders" element={
-            <ProtectedRoute requiredRole="waiter">
-              <OrderTaking />
-            </ProtectedRoute>
-          } />
+            {/* Waiter Routes */}
+            <Route path="/waiter" element={
+              <ProtectedRoute requiredRole="waiter">
+                <WaiterDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/waiter/tables" element={
+              <ProtectedRoute requiredRole="waiter">
+                <TableManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/waiter/orders" element={
+              <ProtectedRoute requiredRole="waiter">
+                <OrderTaking />
+              </ProtectedRoute>
+            } />
 
-          {/* Chef Routes */}
-          <Route path="/chef" element={
-            <ProtectedRoute requiredRole="chef">
-              <ChefDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/chef/orders" element={
-            <ProtectedRoute requiredRole="chef">
-              <KitchenOrders />
-            </ProtectedRoute>
-          } />
+            {/* Chef Routes */}
+            <Route path="/chef" element={
+              <ProtectedRoute requiredRole="chef">
+                <ChefDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/chef/orders" element={
+              <ProtectedRoute requiredRole="chef">
+                <KitchenOrders />
+              </ProtectedRoute>
+            } />
 
-          {/* Customer Routes */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute requiredRole="customer">
-              <CustomerDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/cart" element={
-            <ProtectedRoute requiredRole="customer">
-              <Cart />
-            </ProtectedRoute>
-          } />
-          <Route path="/orders" element={
-            <ProtectedRoute requiredRole="customer">
-              <OrderHistory />
-            </ProtectedRoute>
-          } />
-          <Route path="/reservations" element={
-            <ProtectedRoute requiredRole="customer">
-              <Reservations />
-            </ProtectedRoute>
-          } />
-        </Routes>
+            {/* Customer Routes */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute requiredRole="customer">
+                <CustomerDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/cart" element={
+              <ProtectedRoute>
+                <Cart />
+              </ProtectedRoute>
+            } />
+            <Route path="/orders" element={
+              <ProtectedRoute>
+                <OrderHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="/reservations" element={
+              <ProtectedRoute>
+                <Reservations />
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </CartProvider>
       </AuthProvider>
     </Router>
   );

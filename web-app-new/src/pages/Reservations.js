@@ -1,35 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const timeSlots = [
-  '11:00 AM',
-  '11:30 AM',
-  '12:00 PM',
-  '12:30 PM',
-  '1:00 PM',
-  '1:30 PM',
-  '2:00 PM',
-  '2:30 PM',
-  '3:00 PM',
-  '3:30 PM',
-  '4:00 PM',
-  '4:30 PM',
-  '5:00 PM',
-  '5:30 PM',
-  '6:00 PM',
-  '6:30 PM',
-  '7:00 PM',
-  '7:30 PM',
-  '8:00 PM',
-  '8:30 PM',
-  '9:00 PM',
+  '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM',
+  '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM',
+  '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM',
+  '5:00 PM', '5:30 PM', '6:00 PM', '6:30 PM',
+  '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM',
+  '9:00 PM'
 ];
 
 const Reservations = () => {
+  const navigate = useNavigate();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [formData, setFormData] = useState({
     date: '',
     time: '',
@@ -43,8 +33,27 @@ const Reservations = () => {
   });
 
   useEffect(() => {
+    if (authLoading) {
+      return; // Wait for auth to be initialized
+    }
+    
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: '/reservations' } });
+      return;
+    }
+
+    // Pre-fill user information when available
+    setFormData(prev => ({
+      ...prev,
+      contactInfo: {
+        ...prev.contactInfo,
+        name: user?.name || '',
+        email: user?.email || '',
+      }
+    }));
+
     fetchReservations();
-  }, []);
+  }, [user, navigate, isAuthenticated, authLoading]);
 
   const fetchReservations = async () => {
     try {
@@ -52,7 +61,7 @@ const Reservations = () => {
       const response = await api.reservations.getMyReservations();
       setReservations(response.data);
       setLoading(false);
-    } catch (error) {
+    } catch (err) {
       setError('Failed to fetch reservations. Please try again.');
       setLoading(false);
     }
@@ -78,38 +87,66 @@ const Reservations = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    
     try {
       await api.reservations.create(formData);
+      setSuccess('Reservation created successfully!');
       setFormData({
         date: '',
         time: '',
         guests: '',
         specialRequests: '',
         contactInfo: {
-          name: '',
-          email: '',
+          name: user?.name || '',
+          email: user?.email || '',
           phone: '',
         },
       });
       fetchReservations();
-    } catch (error) {
-      setError('Failed to create reservation. Please try again.');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to create reservation. Please try again.');
     }
   };
 
   const cancelReservation = async (reservationId) => {
     try {
+      setError(null);
       await api.reservations.cancel(reservationId);
+      setSuccess('Reservation cancelled successfully!');
       fetchReservations();
-    } catch (error) {
-      setError('Failed to cancel reservation. Please try again.');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to cancel reservation. Please try again.');
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-4xl font-bold mb-8">Reservations</h1>
 
+      {/* Error and Success Messages */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          {success}
+        </div>
+      )}
+
+      {/* Reservation Form */}
       <div className="mb-8">
         <h2 className="text-2xl font-bold mb-4">Make a Reservation</h2>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -121,6 +158,7 @@ const Reservations = () => {
               name="date"
               value={formData.date}
               onChange={handleChange}
+              min={new Date().toISOString().split('T')[0]}
               className="w-full border border-gray-300 rounded px-4 py-2"
               required
             />
@@ -205,23 +243,22 @@ const Reservations = () => {
             />
           </div>
           <div className="md:col-span-2">
-            <button type="submit" className="bg-primary text-white px-6 py-2 rounded">
+            <button type="submit" className="bg-primary text-white px-6 py-2 rounded hover:bg-primary-dark">
               Make Reservation
             </button>
           </div>
         </form>
       </div>
 
+      {/* Existing Reservations */}
       <div>
         <h2 className="text-2xl font-bold mb-4">Your Reservations</h2>
         {loading ? (
           <div className="text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" role="status">
-              <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
+              <span className="sr-only">Loading...</span>
             </div>
           </div>
-        ) : error ? (
-          <div className="text-red-500 text-center">{error}</div>
         ) : reservations.length === 0 ? (
           <div className="text-center">No reservations found.</div>
         ) : (
@@ -248,7 +285,7 @@ const Reservations = () => {
                 {reservation.status === 'pending' && (
                   <button
                     onClick={() => cancelReservation(reservation.id)}
-                    className="bg-red-500 text-white px-4 py-2 rounded"
+                    className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
                   >
                     Cancel Reservation
                   </button>

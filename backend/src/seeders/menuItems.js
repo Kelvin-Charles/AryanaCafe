@@ -2,7 +2,7 @@ const menuItems = [
   {
     name: 'Classic Espresso',
     description: 'Rich and bold single shot of espresso',
-    price: 3.50,
+    price: 3500,
     category: 'beverages',
     image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04',
     dietary: ['vegan', 'gluten-free', 'dairy-free'],
@@ -12,7 +12,7 @@ const menuItems = [
   {
     name: 'Cappuccino',
     description: 'Espresso topped with foamy milk and a sprinkle of cocoa powder',
-    price: 4.50,
+    price: 4500,
     category: 'beverages',
     image: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c',
     dietary: ['vegetarian'],
@@ -22,7 +22,7 @@ const menuItems = [
   {
     name: 'Tiramisu',
     description: 'Classic Italian dessert with coffee-soaked ladyfingers and mascarpone cream',
-    price: 6.50,
+    price: 6500,
     category: 'desserts',
     image: 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9',
     dietary: ['vegetarian'],
@@ -32,7 +32,7 @@ const menuItems = [
   {
     name: 'Vegan Chocolate Cake',
     description: 'Rich chocolate cake made with plant-based ingredients',
-    price: 5.50,
+    price: 5500,
     category: 'desserts',
     image: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c',
     dietary: ['vegan', 'dairy-free'],
@@ -42,7 +42,7 @@ const menuItems = [
   {
     name: 'Chicken Shawarma Plate',
     description: 'Marinated chicken with rice, hummus, and pita bread',
-    price: 14.99,
+    price: 14900,
     category: 'main',
     image: 'https://images.unsplash.com/photo-1561651823-34feb02250e4',
     dietary: [],
@@ -52,7 +52,7 @@ const menuItems = [
   {
     name: 'Falafel Wrap',
     description: 'Crispy falafel with tahini sauce and fresh vegetables',
-    price: 11.99,
+    price: 11900,
     category: 'main',
     image: 'https://images.unsplash.com/photo-1592415499556-74fcb9f18667',
     dietary: ['vegan', 'vegetarian'],
@@ -62,7 +62,7 @@ const menuItems = [
   {
     name: 'Hummus Plate',
     description: 'Creamy hummus served with warm pita bread and olive oil',
-    price: 8.99,
+    price: 8900,
     category: 'appetizers',
     image: 'https://images.unsplash.com/photo-1577906096429-f73c2c312435',
     dietary: ['vegan', 'vegetarian', 'gluten-free'],
@@ -72,7 +72,7 @@ const menuItems = [
   {
     name: 'Baklava',
     description: 'Sweet pastry made of layers of filo filled with chopped nuts',
-    price: 4.99,
+    price: 4900,
     category: 'desserts',
     image: 'https://images.unsplash.com/photo-1519676867240-f03562e64548',
     dietary: ['vegetarian'],
@@ -82,7 +82,7 @@ const menuItems = [
   {
     name: 'Turkish Coffee',
     description: 'Traditional unfiltered coffee served with cardamom',
-    price: 4.50,
+    price: 4500,
     category: 'beverages',
     image: 'https://images.unsplash.com/photo-1578374173705-969cbe6f2d6b',
     dietary: ['vegan', 'gluten-free'],
@@ -92,7 +92,7 @@ const menuItems = [
   {
     name: 'Mint Tea',
     description: 'Fresh mint leaves steeped in hot water',
-    price: 3.50,
+    price: 3500,
     category: 'beverages',
     image: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3',
     dietary: ['vegan', 'gluten-free'],

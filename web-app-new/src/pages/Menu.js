@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
 import api from '../services/api';
+import { formatCurrency } from '../utils/formatCurrency';
+import CartIcon from '../components/CartIcon';
 
 const Menu = () => {
   const [menuItems, setMenuItems] = useState([]);
@@ -8,6 +13,10 @@ const Menu = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedDietary, setSelectedDietary] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [quantities, setQuantities] = useState({});
+  const { isAuthenticated } = useAuth();
+  const { addToCart } = useCart();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchMenuItems();
@@ -18,10 +27,43 @@ const Menu = () => {
       setLoading(true);
       const response = await api.menu.getAll({ category: selectedCategory, dietary: selectedDietary });
       setMenuItems(response.data);
+      // Initialize quantities
+      const initialQuantities = {};
+      response.data.forEach(item => {
+        initialQuantities[item.id] = 1;
+      });
+      setQuantities(initialQuantities);
       setLoading(false);
     } catch (error) {
       setError('Failed to fetch menu items. Please try again.');
       setLoading(false);
+    }
+  };
+
+  const handleQuantityChange = (itemId, value) => {
+    setQuantities(prev => ({
+      ...prev,
+      [itemId]: Math.max(1, parseInt(value) || 1)
+    }));
+  };
+
+  const handleAddToCart = async (item) => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      await addToCart(item.id, quantities[item.id]);
+      alert('Item added to cart successfully!');
+      // Reset quantity after adding to cart
+      setQuantities(prev => ({
+        ...prev,
+        [item.id]: 1
+      }));
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      alert(error.response?.data?.error || 'Failed to add item to cart. Please try again.');
     }
   };
 
@@ -31,47 +73,44 @@ const Menu = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-8">Our Menu</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-4xl font-bold">Our Menu</h1>
+        <CartIcon />
+      </div>
 
-      <div className="mb-8 flex flex-col md:flex-row items-center justify-between">
-        <div className="flex items-center mb-4 md:mb-0">
-          <label htmlFor="category" className="mr-4">Category:</label>
+      <div className="mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
           <select
-            id="category"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
             className="border border-gray-300 rounded px-4 py-2"
           >
-            <option value="all">All</option>
+            <option value="all">All Categories</option>
             <option value="appetizers">Appetizers</option>
-            <option value="entrees">Entrees</option>
+            <option value="main">Main Course</option>
             <option value="desserts">Desserts</option>
             <option value="beverages">Beverages</option>
           </select>
-        </div>
 
-        <div className="flex items-center mb-4 md:mb-0">
-          <label htmlFor="dietary" className="mr-4">Dietary:</label>
           <select
-            id="dietary"
             value={selectedDietary}
             onChange={(e) => setSelectedDietary(e.target.value)}
             className="border border-gray-300 rounded px-4 py-2"
           >
-            <option value="all">All</option>
+            <option value="all">All Dietary</option>
             <option value="vegetarian">Vegetarian</option>
             <option value="vegan">Vegan</option>
             <option value="gluten-free">Gluten-Free</option>
           </select>
         </div>
 
-        <div className="relative">
+        <div className="relative w-full md:w-auto">
           <input
             type="text"
             placeholder="Search menu items..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="border border-gray-300 rounded px-4 py-2 pr-10"
+            className="w-full md:w-64 border border-gray-300 rounded px-4 py-2 pr-10"
           />
           <svg
             className="absolute right-3 top-3 h-5 w-5 text-gray-400"
@@ -89,9 +128,7 @@ const Menu = () => {
 
       {loading ? (
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" role="status">
-            <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
-          </div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em]"></div>
         </div>
       ) : error ? (
         <div className="text-red-500 text-center">{error}</div>
@@ -103,9 +140,27 @@ const Menu = () => {
               <div className="p-4">
                 <h2 className="text-xl font-bold mb-2">{item.name}</h2>
                 <p className="text-gray-600 mb-4">{item.description}</p>
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-bold">${item.price.toFixed(2)}</span>
-                  <button className="bg-primary text-white px-4 py-2 rounded">Add to Order</button>
+                <div className="flex flex-col gap-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-bold">{formatCurrency(item.price)}</span>
+                    <div className="flex items-center gap-2">
+                      <label htmlFor={`quantity-${item.id}`} className="sr-only">Quantity</label>
+                      <input
+                        id={`quantity-${item.id}`}
+                        type="number"
+                        min="1"
+                        value={quantities[item.id]}
+                        onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                        className="w-16 border border-gray-300 rounded px-2 py-1"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleAddToCart(item)}
+                    className="w-full bg-primary text-white px-4 py-2 rounded hover:bg-primary-dark transition-colors"
+                  >
+                    Add to Order
+                  </button>
                 </div>
               </div>
             </div>

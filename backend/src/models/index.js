@@ -3,29 +3,45 @@ const MenuItem = require('./MenuItem');
 const Order = require('./Order');
 const OrderItem = require('./OrderItem');
 const Reservation = require('./Reservation');
+const Shift = require('./Shift');
+const Inventory = require('./Inventory');
+const Table = require('./Table');
 
 // User associations
-User.hasMany(Order, { foreignKey: 'userId' });
-User.hasMany(Reservation, { foreignKey: 'userId' });
+User.hasMany(Order);
+User.hasMany(Reservation);
+User.hasMany(Shift);
+User.hasMany(Table, { foreignKey: 'waiterId', as: 'assignedTables' });
 
 // Order associations
-Order.belongsTo(User, { foreignKey: 'userId' });
-Order.hasMany(OrderItem, { foreignKey: 'orderId', as: 'items' });
+Order.belongsTo(User);
+Order.hasMany(OrderItem, { as: 'items', onDelete: 'CASCADE' });
+Order.belongsTo(Table, { as: 'table' });
 
 // OrderItem associations
-OrderItem.belongsTo(Order, { foreignKey: 'orderId' });
-OrderItem.belongsTo(MenuItem, { foreignKey: 'menuItemId' });
+OrderItem.belongsTo(Order);
+OrderItem.belongsTo(MenuItem);
 
 // MenuItem associations
-MenuItem.hasMany(OrderItem, { foreignKey: 'menuItemId' });
+MenuItem.hasMany(OrderItem);
 
 // Reservation associations
-Reservation.belongsTo(User, { foreignKey: 'userId' });
+Reservation.belongsTo(User);
+
+// Shift associations
+Shift.belongsTo(User, { foreignKey: 'staffId' });
+
+// Table associations
+Table.belongsTo(User, { foreignKey: 'waiterId', as: 'waiter' });
+Table.belongsTo(Order, { foreignKey: 'currentOrderId', as: 'currentOrder' });
 
 module.exports = {
   User,
   MenuItem,
   Order,
   OrderItem,
-  Reservation
+  Reservation,
+  Shift,
+  Inventory,
+  Table
 }; 

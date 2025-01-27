@@ -1,5 +1,5 @@
 const { sequelize } = require('../config/database');
-const { MenuItem, User, Order, OrderItem, Reservation } = require('../models');
+const { MenuItem, User, Order, OrderItem, Reservation, Table } = require('../models');
 const menuItems = require('./menuItems');
 const bcrypt = require('bcryptjs');
 
@@ -154,6 +154,52 @@ async function seedDatabase() {
         })
       }
     ]);
+
+    // Create tables
+    const tables = await Table.bulkCreate([
+      {
+        number: 1,
+        capacity: 2,
+        status: 'available'
+      },
+      {
+        number: 2,
+        capacity: 2,
+        status: 'available'
+      },
+      {
+        number: 3,
+        capacity: 4,
+        status: 'available'
+      },
+      {
+        number: 4,
+        capacity: 4,
+        status: 'available'
+      },
+      {
+        number: 5,
+        capacity: 6,
+        status: 'available'
+      },
+      {
+        number: 6,
+        capacity: 6,
+        status: 'available'
+      },
+      {
+        number: 7,
+        capacity: 8,
+        status: 'available'
+      },
+      {
+        number: 8,
+        capacity: 8,
+        status: 'available'
+      }
+    ]);
+
+    console.log('Tables seeded successfully');
 
     console.log('Database seeded successfully!');
     process.exit(0);

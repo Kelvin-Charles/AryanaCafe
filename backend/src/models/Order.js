@@ -7,13 +7,6 @@ const Order = sequelize.define('Order', {
     primaryKey: true,
     autoIncrement: true
   },
-  userId: {
-    type: DataTypes.INTEGER,
-    references: {
-      model: 'users',
-      key: 'id'
-    }
-  },
   status: {
     type: DataTypes.ENUM('pending', 'preparing', 'ready', 'delivered', 'cancelled'),
     defaultValue: 'pending'

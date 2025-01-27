@@ -8,11 +8,7 @@ const sequelize = new Sequelize({
   username: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',  // XAMPP's default has no password
   database: process.env.DB_NAME || 'aryana_cafe',
-  logging: false,
-  dialectOptions: {
-    // Needed for XAMPP
-    socketPath: '/opt/lampp/var/mysql/mysql.sock'
-  }
+  logging: false
 });
 
 module.exports = { sequelize }; 

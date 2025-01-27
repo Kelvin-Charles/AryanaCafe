@@ -22,6 +22,7 @@ import Reports from './pages/admin/Reports';
 import ManagerDashboard from './pages/manager/Dashboard';
 import StaffSchedule from './pages/manager/StaffSchedule';
 import InventoryManagement from './pages/manager/InventoryManagement';
+import StaffManagement from './pages/manager/StaffManagement';
 
 // Waiter Pages
 import WaiterDashboard from './pages/waiter/Dashboard';
@@ -86,6 +87,11 @@ function App() {
             <Route path="/manager" element={
               <ProtectedRoute requiredRole="manager">
                 <ManagerDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/manager/staff" element={
+              <ProtectedRoute requiredRole="manager">
+                <StaffManagement />
               </ProtectedRoute>
             } />
             <Route path="/manager/schedule" element={

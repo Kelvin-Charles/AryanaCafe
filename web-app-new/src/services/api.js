@@ -39,6 +39,7 @@ const apiMethods = {
   auth: {
     login: (credentials) => api.post('/auth/login', credentials),
     register: (userData) => api.post('/auth/register', userData),
+    registerStaff: (userData) => api.post('/auth/register-staff', userData),
     me: () => api.get('/auth/me')
   },
   menu: {

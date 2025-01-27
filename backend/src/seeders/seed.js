@@ -5,14 +5,14 @@ const bcrypt = require('bcryptjs');
 
 async function seedDatabase() {
   try {
-    // Disable foreign key checks before dropping tables
-    await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
+    // Disable foreign key checks for SQLite
+    await sequelize.query('PRAGMA foreign_keys = OFF');
 
     // Sync database with force true to drop all tables
     await sequelize.sync({ force: true });
 
     // Re-enable foreign key checks
-    await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+    await sequelize.query('PRAGMA foreign_keys = ON');
 
     // Create admin user
     const hashedPassword = await bcrypt.hash('Admin@123', 10);

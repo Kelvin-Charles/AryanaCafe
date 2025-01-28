@@ -16,7 +16,7 @@ import {
   PieChart,
   Pie,
   Cell
-} from 'recharts';
+} from 'recharts/es6';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];

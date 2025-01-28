@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -8,6 +8,7 @@ import {
   Typography,
   Container,
   Alert,
+  CircularProgress
 } from '@mui/material';
 
 const Login = () => {
@@ -16,11 +17,20 @@ const Login = () => {
     password: '',
   });
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const { login, isAuthenticated, user, getDashboardRoute } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || '/';
+  const from = location.state?.from?.pathname || getDashboardRoute() || '/';
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      console.log('User already authenticated, redirecting to:', getDashboardRoute());
+      navigate(getDashboardRoute(), { replace: true });
+    }
+  }, [isAuthenticated, user, navigate, getDashboardRoute]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -33,12 +43,23 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
     try {
-      await login(formData.email, formData.password);
-      navigate(from, { replace: true });
+      console.log('Attempting login with:', formData.email);
+      const response = await login(formData.email, formData.password);
+      console.log('Login successful:', response);
+      
+      // Get the appropriate route based on user role
+      const redirectTo = getDashboardRoute();
+      console.log('Redirecting to:', redirectTo);
+      
+      navigate(redirectTo, { replace: true });
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to login');
+      console.error('Login error:', err);
+      setError(err.response?.data?.error || 'Failed to login. Please check your credentials.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -55,7 +76,7 @@ const Login = () => {
         <Typography component="h1" variant="h5">
           Sign in
         </Typography>
-        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
+        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {error}
@@ -72,6 +93,7 @@ const Login = () => {
             autoFocus
             value={formData.email}
             onChange={handleChange}
+            disabled={loading}
           />
           <TextField
             margin="normal"
@@ -84,14 +106,20 @@ const Login = () => {
             autoComplete="current-password"
             value={formData.password}
             onChange={handleChange}
+            disabled={loading}
           />
           <Button
             type="submit"
             fullWidth
             variant="contained"
             sx={{ mt: 3, mb: 2 }}
+            disabled={loading}
           >
-            Sign In
+            {loading ? (
+              <CircularProgress size={24} color="inherit" />
+            ) : (
+              'Sign In'
+            )}
           </Button>
         </Box>
       </Box>

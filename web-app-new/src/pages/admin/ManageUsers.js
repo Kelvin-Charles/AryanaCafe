@@ -167,7 +167,7 @@ const ManageUsers = () => {
             <div>Loading users...</div>
           ) : error ? (
             <div>Error loading users: {error}</div>
-          ) : (
+          ) : users && users.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -213,6 +213,8 @@ const ManageUsers = () => {
                 </tbody>
               </table>
             </div>
+          ) : (
+            <div>No users found.</div>
           )}
         </div>
       </div>

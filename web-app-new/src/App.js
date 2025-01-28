@@ -38,6 +38,8 @@ import CustomerDashboard from './pages/customer/Dashboard';
 import Cart from './pages/customer/Cart';
 import OrderHistory from './pages/customer/OrderHistory';
 import Reservations from './pages/customer/Reservations';
+import Orders from './pages/OrderHistory';
+
 
 function App() {
   return (
@@ -50,6 +52,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/menu" element={<Menu />} />
+            <Route path="/reservations" element={<Reservations />} />
 
             {/* Admin Routes */}
             <Route path="/admin" element={
@@ -147,7 +150,7 @@ function App() {
             } />
             <Route path="/orders" element={
               <ProtectedRoute>
-                <OrderHistory />
+                <OrderHistory/>
               </ProtectedRoute>
             } />
             <Route path="/reservations" element={

@@ -48,24 +48,35 @@ const Cart = () => {
         return;
       }
 
+      // Get current user information
+      const userResponse = await api.auth.me();
+      const user = userResponse.data;
+
       const orderData = {
         items: cartItems.map(item => ({
           menuItemId: item.id,
           quantity: item.quantity,
+          price: item.price,
           specialInstructions: item.specialInstructions
         })),
         orderType,
         tableNumber: orderType === 'dine-in' ? parseInt(tableNumber) : null,
         deliveryAddress: orderType === 'delivery' ? deliveryAddress : null,
-        specialRequests
+        specialRequests,
+        customerName: user.name,
+        customerEmail: user.email
       };
 
-      await api.orders.create(orderData);
+      console.log('Sending order data:', orderData);
+      const response = await api.orders.create(orderData);
+      console.log('Order creation response:', response);
+
       await clearCart();
       alert('Order placed successfully!');
       navigate('/orders');
     } catch (error) {
-      alert('Failed to place order. Please try again.');
+      console.error('Order creation error:', error);
+      alert(error.response?.data?.error || 'Failed to place order. Please try again.');
     }
   };
 

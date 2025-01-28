@@ -29,7 +29,19 @@ router.get('/', auth, async (req, res) => {
 // Get user's orders
 router.get('/my-orders', auth, async (req, res) => {
   try {
-    console.log('Fetching orders for user:', req.user.id); // Debug log
+    console.log('Fetching orders for user:', {
+      userId: req.user.id,
+      name: req.user.name,
+      email: req.user.email,
+      role: req.user.role
+    });
+
+    // First, check if any orders exist for this user
+    const orderCount = await Order.count({
+      where: { userId: req.user.id }
+    });
+    console.log('Total orders found in database:', orderCount);
+
     const orders = await Order.findAll({
       where: { userId: req.user.id },
       include: [{
@@ -39,7 +51,12 @@ router.get('/my-orders', auth, async (req, res) => {
       }],
       order: [['createdAt', 'DESC']]
     });
-    console.log('Found orders:', orders.length); // Debug log
+
+    console.log('Found orders:', {
+      count: orders.length,
+      orderIds: orders.map(o => o.orderId)
+    });
+
     res.json(orders);
   } catch (error) {
     console.error('Error fetching user orders:', error);
@@ -56,6 +73,22 @@ router.post('/', auth, async (req, res) => {
     if (!items || !items.length) {
       return res.status(400).json({ error: 'No items in order' });
     }
+
+    // Get user information and validate
+    console.log('Initial user from request:', {
+      userId: req.user.id,
+      name: req.user.name,
+      email: req.user.email,
+      role: req.user.role
+    });
+
+    const user = await req.user.reload();
+    console.log('User after reload:', {
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    });
 
     // Calculate total amount
     let totalAmount = 0;
@@ -79,18 +112,15 @@ router.post('/', auth, async (req, res) => {
     // Round total amount to 2 decimal places
     totalAmount = Math.round(totalAmount * 100) / 100;
 
-    // Get user information
-    const user = await req.user.reload();
-
     // Generate unique orderId
     const timestamp = Date.now().toString(36).toUpperCase();
     const random = require('crypto').randomBytes(2).toString('hex').toUpperCase();
     const orderId = `${timestamp.slice(-3)}${random.slice(0, 3)}`;
 
-    // Create order
-    const order = await Order.create({
+    // Create order with explicit userId
+    const orderData = {
       orderId,
-      userId: req.user.id,
+      userId: user.id,  // Ensure this is explicitly set
       customerName: user.name,
       customerEmail: user.email,
       status: 'pending',
@@ -100,12 +130,31 @@ router.post('/', auth, async (req, res) => {
       tableNumber: orderType === 'dine-in' ? tableNumber : null,
       deliveryAddress: orderType === 'delivery' ? deliveryAddress : null,
       specialRequests
+    };
+
+    console.log('Creating order with data:', {
+      ...orderData,
+      items: orderItems.map(item => ({
+        menuItemId: item.menuItemId,
+        quantity: item.quantity,
+        price: item.price
+      }))
+    });
+
+    const order = await Order.create(orderData);
+    console.log('Order created successfully:', {
+      orderId: order.orderId,
+      id: order.id,
+      userId: order.userId,
+      customerName: order.customerName,
+      customerEmail: order.customerEmail
     });
 
     // Create order items
-    await OrderItem.bulkCreate(
+    const createdItems = await OrderItem.bulkCreate(
       orderItems.map(item => ({ ...item, orderId: order.id }))
     );
+    console.log('Created order items:', createdItems.length);
 
     // Fetch complete order with items
     const completeOrder = await Order.findByPk(order.id, {

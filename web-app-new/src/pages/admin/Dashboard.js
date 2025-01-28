@@ -12,7 +12,15 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer
-} from 'recharts';
+} from 'recharts/es6';
+import { motion } from 'framer-motion';
+import {
+  ShoppingBagIcon,
+  CalendarIcon,
+  ClipboardDocumentListIcon,
+  CurrencyDollarIcon
+} from '@heroicons/react/24/outline';
+import MiniStatistics from '../../components/admin/MiniStatistics';
 
 const Dashboard = () => {
   const { data: ordersList = [], loading: ordersLoading, error: ordersError, execute: fetchOrders } = useApi(api.orders.getAll);

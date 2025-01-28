@@ -6,7 +6,9 @@ import useApi from '../../hooks/useApi';
 const ManageMenu = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const { data: menuItems = [], loading, error, execute: fetchMenu } = useApi(api.menu.getAll);
+  const { data, loading, error, execute: fetchMenu } = useApi(api.menu.getAll);
+  const menuItems = data || [];
+  const [submitError, setSubmitError] = useState(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -27,28 +29,45 @@ const ManageMenu = () => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : 
+              name === 'price' ? parseInt(value) || '' : 
+              value
     }));
   };
 
   const handleEdit = (item) => {
     setSelectedItem(item);
-    setFormData(item);
+    setFormData({
+      ...item,
+      price: item.price || '',
+      preparationTime: item.preparationTime || '',
+      dietary: item.dietary || []
+    });
     setIsEditing(true);
+    setSubmitError(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError(null);
+    
     try {
+      const submitData = {
+        ...formData,
+        price: parseInt(formData.price),
+        preparationTime: parseInt(formData.preparationTime)
+      };
+
       if (isEditing) {
-        await api.menu.update(selectedItem.id, formData);
+        await api.menu.update(selectedItem.id, submitData);
       } else {
-        await api.menu.create(formData);
+        await api.menu.create(submitData);
       }
-      fetchMenu();
+      await fetchMenu();
       resetForm();
     } catch (error) {
       console.error('Error saving menu item:', error);
+      setSubmitError(error.response?.data?.error || 'Failed to save menu item');
     }
   };
 
@@ -56,10 +75,21 @@ const ManageMenu = () => {
     if (window.confirm('Are you sure you want to delete this item?')) {
       try {
         await api.menu.delete(id);
-        fetchMenu();
+        await fetchMenu();
       } catch (error) {
         console.error('Error deleting menu item:', error);
+        alert('Failed to delete menu item');
       }
+    }
+  };
+
+  const handleToggleAvailability = async (item) => {
+    try {
+      await api.menu.update(item.id, { ...item, available: !item.available });
+      await fetchMenu();
+    } catch (error) {
+      console.error('Error updating availability:', error);
+      alert('Failed to update availability');
     }
   };
 
@@ -76,6 +106,7 @@ const ManageMenu = () => {
     });
     setSelectedItem(null);
     setIsEditing(false);
+    setSubmitError(null);
   };
 
   const categories = ['beverages', 'desserts', 'snacks', 'main', 'appetizers'];
@@ -92,6 +123,11 @@ const ManageMenu = () => {
           <h2 className="text-xl font-bold mb-4">
             {isEditing ? 'Edit Menu Item' : 'Add New Menu Item'}
           </h2>
+          {submitError && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+              {submitError}
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -106,7 +142,7 @@ const ManageMenu = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Price</label>
+                <label className="block text-sm font-medium mb-1">Price (TSh)</label>
                 <input
                   type="number"
                   name="price"
@@ -114,7 +150,8 @@ const ManageMenu = () => {
                   onChange={handleInputChange}
                   className="w-full p-2 border rounded"
                   required
-                  step="0.01"
+                  min="0"
+                  step="1"
                 />
               </div>
               <div>
@@ -143,6 +180,8 @@ const ManageMenu = () => {
                   onChange={handleInputChange}
                   className="w-full p-2 border rounded"
                   required
+                  min="0"
+                  step="1"
                 />
               </div>
             </div>
@@ -167,6 +206,19 @@ const ManageMenu = () => {
                 className="w-full p-2 border rounded"
                 required
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Availability</label>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="available"
+                  checked={formData.available}
+                  onChange={handleInputChange}
+                  className="mr-2"
+                />
+                <span>Item is available</span>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Dietary Options</label>
@@ -220,7 +272,7 @@ const ManageMenu = () => {
           {loading ? (
             <div>Loading menu items...</div>
           ) : error ? (
-            <div>Error loading menu items: {error}</div>
+            <div className="text-red-600">Error loading menu items: {error}</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -246,9 +298,10 @@ const ManageMenu = () => {
                       </td>
                       <td className="border px-4 py-2">{item.name}</td>
                       <td className="border px-4 py-2">{item.category}</td>
-                      <td className="border px-4 py-2">${item.price}</td>
+                      <td className="border px-4 py-2">TSh {item.price.toLocaleString()}</td>
                       <td className="border px-4 py-2">
-                        <span
+                        <button
+                          onClick={() => handleToggleAvailability(item)}
                           className={`px-2 py-1 rounded text-sm ${
                             item.available
                               ? 'bg-green-100 text-green-800'
@@ -256,18 +309,18 @@ const ManageMenu = () => {
                           }`}
                         >
                           {item.available ? 'Available' : 'Unavailable'}
-                        </span>
+                        </button>
                       </td>
                       <td className="border px-4 py-2">
                         <button
                           onClick={() => handleEdit(item)}
-                          className="px-3 py-1 bg-blue-500 text-white rounded mr-2"
+                          className="px-3 py-1 bg-blue-500 text-white rounded mr-2 hover:bg-blue-600"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => handleDelete(item.id)}
-                          className="px-3 py-1 bg-red-500 text-white rounded"
+                          className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
                         >
                           Delete
                         </button>

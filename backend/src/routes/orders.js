@@ -3,6 +3,7 @@ const router = express.Router();
 const { Order, OrderItem, MenuItem } = require('../models');
 const { auth } = require('../middleware/auth');
 const { Op } = require('sequelize');
+const { sequelize } = require('../config/database');
 
 // Get all orders (admin only)
 router.get('/', auth, async (req, res) => {
@@ -28,6 +29,7 @@ router.get('/', auth, async (req, res) => {
 // Get user's orders
 router.get('/my-orders', auth, async (req, res) => {
   try {
+    console.log('Fetching orders for user:', req.user.id); // Debug log
     const orders = await Order.findAll({
       where: { userId: req.user.id },
       include: [{
@@ -37,9 +39,11 @@ router.get('/my-orders', auth, async (req, res) => {
       }],
       order: [['createdAt', 'DESC']]
     });
+    console.log('Found orders:', orders.length); // Debug log
     res.json(orders);
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('Error fetching user orders:', error);
+    res.status(500).json({ error: 'Failed to fetch orders' });
   }
 });
 
@@ -62,7 +66,8 @@ router.post('/', auth, async (req, res) => {
       if (!menuItem) {
         return res.status(400).json({ error: `Menu item ${item.menuItemId} not found` });
       }
-      totalAmount += menuItem.price * item.quantity;
+      const itemTotal = menuItem.price * item.quantity;
+      totalAmount += itemTotal;
       orderItems.push({
         menuItemId: item.menuItemId,
         quantity: item.quantity,
@@ -71,15 +76,29 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
+    // Round total amount to 2 decimal places
+    totalAmount = Math.round(totalAmount * 100) / 100;
+
+    // Get user information
+    const user = await req.user.reload();
+
+    // Generate unique orderId
+    const timestamp = Date.now().toString(36).toUpperCase();
+    const random = require('crypto').randomBytes(2).toString('hex').toUpperCase();
+    const orderId = `${timestamp.slice(-3)}${random.slice(0, 3)}`;
+
     // Create order
     const order = await Order.create({
+      orderId,
       userId: req.user.id,
+      customerName: user.name,
+      customerEmail: user.email,
       status: 'pending',
       orderType,
       totalAmount,
       paymentStatus: 'pending',
-      tableNumber,
-      deliveryAddress,
+      tableNumber: orderType === 'dine-in' ? tableNumber : null,
+      deliveryAddress: orderType === 'delivery' ? deliveryAddress : null,
       specialRequests
     });
 
@@ -97,9 +116,19 @@ router.post('/', auth, async (req, res) => {
       }]
     });
 
-    res.status(201).json(completeOrder);
+    // Format the response
+    const formattedOrder = {
+      ...completeOrder.toJSON(),
+      totalAmount: Number(completeOrder.totalAmount).toLocaleString()
+    };
+
+    res.status(201).json(formattedOrder);
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('Order creation error:', error);
+    res.status(500).json({ 
+      error: 'Failed to create order',
+      details: error.message
+    });
   }
 });
 

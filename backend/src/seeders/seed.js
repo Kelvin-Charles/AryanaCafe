@@ -55,6 +55,8 @@ async function seedDatabase() {
     const orders = await Order.bulkCreate([
       {
         userId: users[4].id, // Customer's order
+        customerName: users[4].name,
+        customerEmail: users[4].email,
         status: 'delivered',
         orderType: 'dine-in',
         totalAmount: 25.98,
@@ -65,6 +67,8 @@ async function seedDatabase() {
       },
       {
         userId: users[4].id,
+        customerName: users[4].name,
+        customerEmail: users[4].email,
         status: 'preparing',
         orderType: 'delivery',
         totalAmount: 42.97,
@@ -79,6 +83,8 @@ async function seedDatabase() {
       },
       {
         userId: users[4].id,
+        customerName: users[4].name,
+        customerEmail: users[4].email,
         status: 'pending',
         orderType: 'takeaway',
         totalAmount: 18.99,

@@ -1,11 +1,17 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
+const crypto = require('crypto');
 
 const Order = sequelize.define('Order', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
+  },
+  orderId: {
+    type: DataTypes.STRING,
+    unique: true,
+    allowNull: false
   },
   status: {
     type: DataTypes.ENUM('pending', 'preparing', 'ready', 'delivered', 'cancelled'),
@@ -38,6 +44,17 @@ const Order = sequelize.define('Order', {
   specialRequests: {
     type: DataTypes.TEXT
   },
+  customerName: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  customerEmail: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  customerPhone: {
+    type: DataTypes.STRING
+  },
   guestInfo: {
     type: DataTypes.JSON
   },
@@ -46,7 +63,19 @@ const Order = sequelize.define('Order', {
   }
 }, {
   tableName: 'orders',
-  timestamps: true
+  timestamps: true,
+  hooks: {
+    beforeCreate: async (order) => {
+      if (order.userId) {
+        const { User } = require('../models');
+        const user = await User.findByPk(order.userId);
+        if (user) {
+          order.customerName = user.name;
+          order.customerEmail = user.email;
+        }
+      }
+    }
+  }
 });
 
 module.exports = Order; 

@@ -8,6 +8,14 @@ const Order = sequelize.define('Order', {
     primaryKey: true,
     autoIncrement: true
   },
+  UserId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
   orderId: {
     type: DataTypes.STRING,
     unique: true,
@@ -66,9 +74,9 @@ const Order = sequelize.define('Order', {
   timestamps: true,
   hooks: {
     beforeCreate: async (order) => {
-      if (order.userId) {
+      if (order.UserId) {
         const { User } = require('../models');
-        const user = await User.findByPk(order.userId);
+        const user = await User.findByPk(order.UserId);
         if (user) {
           order.customerName = user.name;
           order.customerEmail = user.email;

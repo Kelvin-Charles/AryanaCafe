@@ -53,6 +53,7 @@ const Cart = () => {
       const user = userResponse.data;
 
       const orderData = {
+        UserId: user.id,
         items: cartItems.map(item => ({
           menuItemId: item.id,
           quantity: item.quantity,

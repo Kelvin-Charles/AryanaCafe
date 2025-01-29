@@ -75,19 +75,10 @@ router.post('/', auth, async (req, res) => {
     }
 
     // Get user information and validate
-    console.log('Initial user from request:', {
-      userId: req.user.id,
+    console.log('Creating order for user:', {
+      UserId: req.user.id,
       name: req.user.name,
-      email: req.user.email,
-      role: req.user.role
-    });
-
-    const user = await req.user.reload();
-    console.log('User after reload:', {
-      userId: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role
+      email: req.user.email
     });
 
     // Calculate total amount
@@ -117,12 +108,12 @@ router.post('/', auth, async (req, res) => {
     const random = require('crypto').randomBytes(2).toString('hex').toUpperCase();
     const orderId = `${timestamp.slice(-3)}${random.slice(0, 3)}`;
 
-    // Create order with explicit userId
+    // Create order with explicit UserId from authenticated user
     const orderData = {
       orderId,
-      userId: user.id,  // Ensure this is explicitly set
-      customerName: user.name,
-      customerEmail: user.email,
+      UserId: req.user.id,
+      customerName: req.user.name,
+      customerEmail: req.user.email,
       status: 'pending',
       orderType,
       totalAmount,
@@ -145,7 +136,7 @@ router.post('/', auth, async (req, res) => {
     console.log('Order created successfully:', {
       orderId: order.orderId,
       id: order.id,
-      userId: order.userId,
+      UserId: order.UserId,
       customerName: order.customerName,
       customerEmail: order.customerEmail
     });

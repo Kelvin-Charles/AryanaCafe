@@ -102,6 +102,12 @@ const apiMethods = {
     registerStaff: (userData) => api.post('/auth/register-staff', userData),
     me: () => api.get('/auth/me')
   },
+  addresses: {
+    getAll: () => api.get('/api/addresses'),
+    create: (addressData) => api.post('/api/addresses', addressData),
+    update: (id, addressData) => api.put(`/api/addresses/${id}`, addressData),
+    delete: (id) => api.delete(`/api/addresses/${id}`)
+  },
   menu: {
     getAll: () => api.get('/menu'),
     getById: (id) => api.get(`/menu/${id}`),
@@ -125,7 +131,8 @@ const apiMethods = {
     getPendingOrders: () => api.get('/orders/pending'),
     getCompletedOrders: () => api.get('/orders/completed'),
     assignWaiter: (orderId, waiterId) => api.post(`/orders/${orderId}/assign`, { waiterId }),
-    addNote: (orderId, note) => api.post(`/orders/${orderId}/notes`, { note })
+    addNote: (orderId, note) => api.post(`/orders/${orderId}/notes`, { note }),
+    getTotalSpend: () => api.get('/orders/total-spend')
   },
   reservations: {
     getAll: () => api.get('/reservations'),

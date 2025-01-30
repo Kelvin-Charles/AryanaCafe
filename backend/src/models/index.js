@@ -17,6 +17,7 @@ User.hasMany(Table, { foreignKey: 'waiterId', as: 'assignedTables' });
 Order.belongsTo(User);
 Order.hasMany(OrderItem, { as: 'items', onDelete: 'CASCADE' });
 Order.belongsTo(Table, { as: 'table' });
+Order.hasOne(Reservation);
 
 // OrderItem associations
 OrderItem.belongsTo(Order);
@@ -27,6 +28,8 @@ MenuItem.hasMany(OrderItem);
 
 // Reservation associations
 Reservation.belongsTo(User);
+Reservation.belongsTo(Table, { foreignKey: 'tableId' });
+Reservation.belongsTo(Order, { foreignKey: 'OrderId' });
 
 // Shift associations
 Shift.belongsTo(User, { foreignKey: 'staffId' });

@@ -1,14 +1,22 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
-const sequelize = new Sequelize({
+const sequelize = new Sequelize('aryana_cafe', 'root', '', {
+  host: 'localhost',
   dialect: 'mysql',
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 3306,
-  username: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',  // XAMPP's default has no password
-  database: process.env.DB_NAME || 'aryana_cafe',
-  logging: false
+  logging: false,
+  define: {
+    timestamps: true,
+    underscored: false,
+    freezeTableName: true
+  },
+  sync: {
+    alter: false, // Prevent automatic table modifications
+    force: false  // Prevent dropping tables
+  }
 });
 
-module.exports = { sequelize }; 
+module.exports = {
+  sequelize,
+  Sequelize
+}; 

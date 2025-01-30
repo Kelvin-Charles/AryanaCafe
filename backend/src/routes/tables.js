@@ -4,31 +4,24 @@ const { Table, User, Order } = require('../models');
 const { auth } = require('../middleware/auth');
 const { Op } = require('sequelize');
 
-// Get all tables
-router.get('/', auth, async (req, res) => {
+// Get all tables - public access allowed
+router.get('/', async (req, res) => {
   try {
+    console.log('Fetching all tables');
+    // For public access, only return basic table information
     const tables = await Table.findAll({
-      include: [
-        {
-          model: User,
-          as: 'waiter',
-          attributes: ['id', 'name']
-        },
-        {
-          model: Order,
-          as: 'currentOrder',
-          attributes: ['id', 'status', 'createdAt']
-        }
-      ],
+      attributes: ['id', 'number', 'capacity', 'status'],
       order: [['number', 'ASC']]
     });
+    console.log('Found tables:', tables.length);
     res.json(tables);
   } catch (error) {
+    console.error('Error fetching tables:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Get table status
+// Get table status - requires authentication
 router.get('/status', auth, async (req, res) => {
   try {
     const tables = await Table.findAll({

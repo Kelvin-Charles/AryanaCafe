@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import Navbar from './components/Navbar';
 
 // Public Pages
 import Home from './pages/Home';
@@ -39,6 +40,7 @@ import Cart from './pages/customer/Cart';
 import OrderHistory from './pages/customer/OrderHistory';
 import Reservations from './pages/customer/Reservations';
 import Orders from './pages/OrderHistory';
+import Profile from './pages/Profile';
 
 
 function App() {
@@ -46,6 +48,7 @@ function App() {
     <Router>
       <AuthProvider>
         <CartProvider>
+          <Navbar />
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Home />} />
@@ -158,6 +161,7 @@ function App() {
                 <Reservations />
               </ProtectedRoute>
             } />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           </Routes>
         </CartProvider>
       </AuthProvider>

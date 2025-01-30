@@ -5,6 +5,21 @@ const { auth } = require('../middleware/auth');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 
+// Get total spend for the authenticated user
+router.get('/total-spend', auth, async (req, res) => {
+  try {
+    console.log('Fetching total spend for user:', req.user.id);
+    const totalSpend = await Order.sum('totalAmount', {
+      where: { UserId: req.user.id }
+    });
+    console.log('Total spend result:', totalSpend);
+    res.json({ totalSpend: totalSpend || 0 });
+  } catch (error) {
+    console.error('Error fetching total spend:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get all orders (admin only)
 router.get('/', auth, async (req, res) => {
   try {

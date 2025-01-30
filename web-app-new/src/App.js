@@ -10,6 +10,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Menu from './pages/Menu';
+import Reservations from './pages/Reservations';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
@@ -38,10 +39,7 @@ import KitchenOrders from './pages/chef/KitchenOrders';
 import CustomerDashboard from './pages/customer/Dashboard';
 import Cart from './pages/customer/Cart';
 import OrderHistory from './pages/customer/OrderHistory';
-import Reservations from './pages/customer/Reservations';
-import Orders from './pages/OrderHistory';
 import Profile from './pages/Profile';
-
 
 function App() {
   return (
@@ -147,21 +145,20 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="/cart" element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole="customer">
                 <Cart />
               </ProtectedRoute>
             } />
             <Route path="/orders" element={
-              <ProtectedRoute>
-                <OrderHistory/>
+              <ProtectedRoute requiredRole="customer">
+                <OrderHistory />
               </ProtectedRoute>
             } />
-            <Route path="/reservations" element={
-              <ProtectedRoute>
-                <Reservations />
+            <Route path="/profile" element={
+              <ProtectedRoute requiredRole="customer">
+                <Profile />
               </ProtectedRoute>
             } />
-            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           </Routes>
         </CartProvider>
       </AuthProvider>

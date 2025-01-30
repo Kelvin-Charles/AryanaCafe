@@ -1,106 +1,120 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-
-// Create axios instance with default config
+// Create axios instance with base configuration
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL:  'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
-// Initialize token from localStorage
+// Function to initialize token from localStorage
 const initializeToken = () => {
   const token = localStorage.getItem('token');
   if (token) {
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    console.log('API: Initialized with token');
-  } else {
-    console.log('API: No token found during initialization');
   }
 };
 
-initializeToken();
+// List of public endpoints that don't require authentication
+const publicEndpoints = [
+  '/auth/login',
+  '/auth/register',
+  '/menu',
+  '/tables',
+  '/reservations/check-availability'
+];
 
-// Request interceptor for debugging and token handling
+// Request interceptor
 api.interceptors.request.use(
   (config) => {
-    // Get the latest token on each request
-    const currentToken = localStorage.getItem('token');
+    // Check if the endpoint is public
+    const isPublicEndpoint = publicEndpoints.some(endpoint => config.url.includes(endpoint));
     
-    if (currentToken) {
-      config.headers['Authorization'] = `Bearer ${currentToken}`;
-      console.log('API Request:', {
-        url: config.url,
-        method: config.method,
-        hasToken: true
-      });
+    if (isPublicEndpoint || config.headers['x-public-route']) {
+      // Don't add auth header for public routes
+      delete config.headers['Authorization'];
     } else {
-      console.log('API Request:', {
-        url: config.url,
-        method: config.method,
-        hasToken: false,
-        message: 'No token found'
-      });
+      // Add auth header for protected routes
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
     }
-
+    
     return config;
   },
   (error) => {
-    console.error('API Request Error:', error);
     return Promise.reject(error);
   }
 );
 
-// Response interceptor for debugging and error handling
+// Response interceptor
 api.interceptors.response.use(
   (response) => {
-    // For successful login responses, check for and store token
     if (response.config.url.includes('/auth/login') && response.data?.token) {
       localStorage.setItem('token', response.data.token);
       api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-      console.log('API: Token stored after login');
     }
-    
-    console.log('API Response:', {
-      url: response.config.url,
-      status: response.status,
-      hasData: !!response.data
-    });
     return response;
   },
   (error) => {
-    console.error('API Response Error:', {
-      url: error.config?.url,
-      status: error.response?.status,
-      message: error.response?.data?.message || error.message
-    });
+    const isPublicEndpoint = publicEndpoints.some(endpoint => error.config.url.includes(endpoint));
+    const isPublicRoute = error.config?.headers?.['x-public-route'];
     
-    // Handle 401 errors
-    if (error.response?.status === 401) {
-      // Don't clear token or redirect for login attempts
-      if (!error.config.url.includes('/auth/login')) {
-        console.log('API: Unauthorized access detected, clearing token');
-        localStorage.removeItem('token');
-        delete api.defaults.headers.common['Authorization'];
-        
-        // Only redirect to login if not already on login page
-        if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
-        }
+    if (error.response?.status === 401 && !isPublicEndpoint && !isPublicRoute) {
+      localStorage.removeItem('token');
+      delete api.defaults.headers.common['Authorization'];
+      
+      // Only redirect if not already on login page and not a public route
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
       }
     }
     return Promise.reject(error);
   }
 );
 
+const makeRequest = async (url, method = 'get', data = null, options = {}) => {
+  const config = {
+    url,
+    method,
+    data,
+    headers: {},
+    params: options.params
+  };
+
+  if (options.public) {
+    config.headers['x-public-route'] = true;
+  }
+
+  try {
+    const response = await api(config);
+    return response;
+  } catch (error) {
+    console.error('API Error:', { 
+      url, 
+      status: error.response?.status, 
+      error: error.response?.data,
+      isPublic: options.public,
+      handleUnauthorized: options.handleUnauthorized
+    });
+
+    // If this is a route that should handle unauthorized errors gracefully
+    if (options.handleUnauthorized && error.response?.status === 401) {
+      return { data: [] };
+    }
+
+    throw error;
+  }
+};
+
 const apiMethods = {
   auth: {
-    login: (credentials) => api.post('/auth/login', credentials),
-    register: (userData) => api.post('/auth/register', userData),
-    registerStaff: (userData) => api.post('/auth/register-staff', userData),
-    me: () => api.get('/auth/me')
+    login: (data) => makeRequest('/auth/login', 'post', data, { public: true }),
+    register: (data) => makeRequest('/auth/register', 'post', data, { public: true }),
+    registerStaff: (userData) => makeRequest('/auth/register-staff', 'post', userData),
+    me: () => makeRequest('/auth/me')
   },
   addresses: {
     getAll: () => api.get('/api/addresses'),
@@ -109,38 +123,41 @@ const apiMethods = {
     delete: (id) => api.delete(`/api/addresses/${id}`)
   },
   menu: {
-    getAll: () => api.get('/menu'),
-    getById: (id) => api.get(`/menu/${id}`),
-    create: (menuItemData) => api.post('/menu', menuItemData),
-    update: (id, menuItemData) => api.put(`/menu/${id}`, menuItemData),
-    delete: (id) => api.delete(`/menu/${id}`),
-    getByCategory: (category) => api.get(`/menu/category/${category}`),
-    search: (query) => api.get(`/menu/search`, { params: { q: query } }),
-    getReviews: (menuItemId) => api.get(`/menu/${menuItemId}/reviews`),
-    addReview: (menuItemId, reviewData) => api.post(`/menu/${menuItemId}/reviews`, reviewData)
+    getAll: () => makeRequest('/menu', 'get', null, { public: true }),
+    getById: (id) => makeRequest(`/menu/${id}`, 'get', null, { public: true }),
+    create: (menuItemData) => makeRequest('/menu', 'post', menuItemData),
+    update: (id, menuItemData) => makeRequest(`/menu/${id}`, 'put', menuItemData),
+    delete: (id) => makeRequest(`/menu/${id}`, 'delete'),
+    getByCategory: (category) => makeRequest(`/menu/category/${category}`, 'get', null, { public: true }),
+    search: (query) => makeRequest(`/menu/search`, 'get', null, { public: true, params: { q: query } }),
+    getReviews: (menuItemId) => makeRequest(`/menu/${menuItemId}/reviews`, 'get', null, { public: true }),
+    addReview: (menuItemId, reviewData) => makeRequest(`/menu/${menuItemId}/reviews`, 'post', reviewData)
   },
   orders: {
-    getAll: () => api.get('/orders'),
-    getById: (id) => api.get(`/orders/${id}`),
-    create: (orderData) => api.post('/orders', orderData),
-    update: (id, orderData) => api.put(`/orders/${id}`, orderData),
-    updateStatus: (id, status) => api.patch(`/orders/${id}/status`, { status }),
-    delete: (id) => api.delete(`/orders/${id}`),
-    getMyOrders: () => api.get('/orders/my-orders'),
-    getActiveOrders: () => api.get('/orders/active'),
-    getPendingOrders: () => api.get('/orders/pending'),
-    getCompletedOrders: () => api.get('/orders/completed'),
-    assignWaiter: (orderId, waiterId) => api.post(`/orders/${orderId}/assign`, { waiterId }),
-    addNote: (orderId, note) => api.post(`/orders/${orderId}/notes`, { note }),
-    getTotalSpend: () => api.get('/orders/total-spend')
+    getAll: () => makeRequest('/orders', 'get'),
+    getById: (id) => makeRequest(`/orders/${id}`, 'get'),
+    create: (orderData) => makeRequest('/orders', 'post', orderData),
+    update: (id, orderData) => makeRequest(`/orders/${id}`, 'put', orderData),
+    updateStatus: (id, status) => makeRequest(`/orders/${id}/status`, 'patch', { status }),
+    delete: (id) => makeRequest(`/orders/${id}`, 'delete'),
+    getMyOrders: () => makeRequest('/orders/my-orders', 'get'),
+    getActiveOrders: () => makeRequest('/orders/active', 'get'),
+    getPendingOrders: () => makeRequest('/orders/pending', 'get'),
+    getCompletedOrders: () => makeRequest('/orders/completed', 'get')
   },
   reservations: {
-    getAll: () => api.get('/reservations'),
-    getMyReservations: () => api.get('/reservations/my-reservations'),
-    create: (data) => api.post('/reservations', data),
-    cancel: (id) => api.patch(`/reservations/${id}/cancel`),
-    delete: (id) => api.delete(`/reservations/${id}`),
-    checkAvailability: (date, time) => api.get('/reservations/check-availability', { params: { date, time } })
+    getAll: (options = {}) => makeRequest('/reservations', 'get', null, options),
+    getMyReservations: () => makeRequest('/reservations/my-reservations', 'get', null, {
+      handleUnauthorized: false
+    }),
+    create: (data) => makeRequest('/reservations', 'post', data),
+    update: (id, data) => makeRequest(`/reservations/${id}`, 'put', data),
+    cancel: (id) => makeRequest(`/reservations/${id}/cancel`, 'patch'),
+    delete: (id) => makeRequest(`/reservations/${id}`, 'delete'),
+    checkAvailability: (date, time, guests) => makeRequest('/reservations/check-availability', 'get', null, { 
+      public: true,
+      params: { date, time, guests }
+    })
   },
   users: {
     getAll: () => api.get('/users'),
@@ -174,11 +191,11 @@ const apiMethods = {
     removeStaff: (shiftId, staffId) => api.delete(`/shifts/${shiftId}/staff/${staffId}`)
   },
   tables: {
-    getAll: () => api.get('/tables'),
-    update: (id, tableData) => api.put(`/tables/${id}`, tableData),
-    getStatus: () => api.get('/tables/status'),
-    assign: (tableId, waiterId) => api.post(`/tables/${tableId}/assign`, { waiterId }),
-    release: (tableId) => api.post(`/tables/${tableId}/release`)
+    getAll: (options = {}) => makeRequest('/tables', 'get', null, { ...options, public: true }),
+    create: (data) => makeRequest('/tables', 'post', data),
+    update: (id, data) => makeRequest(`/tables/${id}`, 'put', data),
+    delete: (id) => makeRequest(`/tables/${id}`, 'delete'),
+    getStatus: () => makeRequest('/tables/status', 'get', null, { public: true })
   },
   cart: {
     get: () => api.get('/cart'),

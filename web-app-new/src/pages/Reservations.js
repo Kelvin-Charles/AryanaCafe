@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { format, addDays, parseISO, isAfter, isBefore, startOfDay, differenceInDays } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+import MenuOrderPopup from '../components/MenuOrderPopup';
 
 const Reservations = () => {
   const { user, isAuthenticated } = useAuth();
@@ -22,6 +23,10 @@ const Reservations = () => {
       email: '',
     phone: ''
   });
+  const [showMenuPopup, setShowMenuPopup] = useState(false);
+  const [orderId, setOrderId] = useState(null);
+  const [showOrderOption, setShowOrderOption] = useState(false);
+  const [timeSlotInfo, setTimeSlotInfo] = useState([]);
 
   // Time slots configuration
   const timeSlots = [
@@ -56,18 +61,31 @@ const Reservations = () => {
       checkAvailability();
     }
   }, [selectedDate]);
-
-  const fetchReservations = async () => {
-    if (!isAuthenticated) return;
     
+  const fetchReservations = async () => {
+    if (!isAuthenticated) {
+      setReservations([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const response = await api.reservations.getMyReservations();
-      setReservations(response.data || []);
       setError(null);
+      console.log('Fetching reservations for user:', user?.id);
+      const response = await api.reservations.getMyReservations();
+      console.log('Received reservations:', response.data);
+      
+      if (response.data) {
+      setReservations(response.data);
+      } else {
+        setReservations([]);
+      }
     } catch (err) {
       console.error('Error fetching reservations:', err);
       setError('Failed to fetch reservations');
+      setReservations([]);
     } finally {
       setLoading(false);
     }
@@ -78,53 +96,30 @@ const Reservations = () => {
       setCheckingAvailability(true);
       setAvailabilityError(null);
       
-      // Get all tables and their capacity
-      const response = await api.tables.getAll();
-      const tables = response.data || [];
-      const totalTables = tables.length;
+      const response = await api.reservations.checkAvailability(
+        format(selectedDate, 'yyyy-MM-dd'),
+        null,
+        guests
+      );
 
-      if (totalTables === 0) {
-        setAvailabilityError('No tables are configured in the system.');
-        setAvailableTimes([]);
-        return;
-      }
+      const { timeSlots } = response.data;
       
-      try {
-        // Get existing reservations for the selected date
-        const reservationsResponse = await api.reservations.getByDate(format(selectedDate, 'yyyy-MM-dd'));
-        const dateReservations = reservationsResponse.data || [];
+      setAvailableTimes(timeSlots.filter(slot => slot.available).map(slot => slot.time));
+      setTimeSlotInfo(timeSlots);
 
-        // Check availability for each time slot
-        const availableSlots = timeSlots.filter(time => {
-          // Get active reservations for this specific time slot
-          const activeReservations = dateReservations.filter(
-            res => res.time === time && res.status !== 'cancelled'
-          );
-
-          // A time slot is available if there are tables not yet booked
-          const tablesBooked = activeReservations.length;
-          return tablesBooked < totalTables;
-        });
-        
-        setAvailableTimes(availableSlots);
-
-        // Only show error if no times are available
-        if (availableSlots.length === 0) {
-          setAvailabilityError('All tables are booked for all time slots on this date. Please try another date.');
-        }
-      } catch (err) {
-        // If we can't get reservations, assume all slots are available
-        console.warn('Could not fetch reservations, showing all time slots as available:', err);
-        setAvailableTimes(timeSlots);
-      }
-    } catch (err) {
-      console.error('Error checking availability:', err);
-      // If we can't get tables, show an error but still show time slots
-      setAvailabilityError('Could not check table availability, but you can still select a time.');
-      setAvailableTimes(timeSlots);
+    } catch (error) {
+      console.error('Error checking availability:', error);
+      setAvailabilityError('Unable to check availability at this time. Please try again later.');
+      setAvailableTimes([]);
+      setTimeSlotInfo([]);
     } finally {
       setCheckingAvailability(false);
     }
+  };
+
+  const handleOrderComplete = (newOrderId) => {
+    setOrderId(newOrderId);
+    setShowMenuPopup(false);
   };
 
   const handleSubmit = async (e) => {
@@ -132,48 +127,102 @@ const Reservations = () => {
     
     try {
       // Double check availability right before submitting
-      const tablesResponse = await api.tables.getAll();
-      const tables = tablesResponse.data || [];
-      const totalTables = tables.length;
-      
-      // Get current reservations for the selected time slot
-      const reservationsResponse = await api.reservations.getByDate(format(selectedDate, 'yyyy-MM-dd'));
-      const currentTimeReservations = (reservationsResponse.data || []).filter(
-        res => res.time === selectedTime && res.status !== 'cancelled'
+      const response = await api.reservations.checkAvailability(
+        format(selectedDate, 'yyyy-MM-dd'),
+        selectedTime,
+        guests
       );
 
-      // Verify the time slot is still available
-      if (currentTimeReservations.length >= totalTables) {
+      const { timeSlots } = response.data;
+      const selectedTimeSlot = timeSlots.find(slot => slot.time === selectedTime);
+
+      if (!selectedTimeSlot || !selectedTimeSlot.available) {
         alert('Sorry, this time slot has just been booked. Please select another time.');
         await checkAvailability();
+        return;
+      }
+
+      // If user is not authenticated, redirect to login with return URL
+      if (!isAuthenticated) {
+        const reservationData = {
+          date: format(selectedDate, 'yyyy-MM-dd'),
+          time: selectedTime,
+          guests,
+          specialRequests,
+          contactInfo
+        };
+        // Store reservation data in session storage
+        sessionStorage.setItem('pendingReservation', JSON.stringify(reservationData));
+        window.location.href = `/login?redirect=${encodeURIComponent('/reservations')}`;
+        return;
+      }
+
+      // Ask if they want to add food to their reservation
+      setShowOrderOption(true);
+
+    } catch (err) {
+      console.error('Error creating reservation:', err);
+      alert('Failed to check availability. Please try again.');
+    }
+  };
+
+  const finalizeReservation = async (withOrder = false) => {
+    try {
+      if (!isAuthenticated || !user?.id) {
+        alert('You must be logged in to make a reservation');
         return;
       }
 
       const reservationData = {
         date: format(selectedDate, 'yyyy-MM-dd'),
         time: selectedTime,
-        guests,
-        specialRequests,
+        guests: parseInt(guests, 10),
+        specialRequests: specialRequests || '',
         contactInfo: {
-          name: contactInfo.name,
-          email: contactInfo.email,
-          phone: contactInfo.phone
+          name: contactInfo.name || user.name,
+          email: contactInfo.email || user.email,
+          phone: contactInfo.phone || ''
         }
       };
 
-      await api.reservations.create(reservationData);
+      // Only include OrderId if it exists and is not null
+      if (orderId) {
+        reservationData.OrderId = orderId;
+      }
+
+      console.log('Creating reservation with data:', {
+        ...reservationData,
+        userId: user.id,
+        userInfo: {
+          name: user.name,
+          email: user.email
+        }
+      });
+
+      const response = await api.reservations.create(reservationData);
+      console.log('Reservation created:', response.data);
+      
       setShowSuccessMessage(true);
       setTimeout(() => setShowSuccessMessage(false), 5000);
-      fetchReservations();
+      await fetchReservations();
       resetForm();
+      setShowOrderOption(false);
+      setOrderId(null);
     } catch (err) {
-      if (err.response?.status === 409) {
-        alert('This time slot has just been booked. Please select another time.');
-        await checkAvailability();
-      } else {
-        alert('Failed to create reservation. Please try again.');
-        console.error('Error creating reservation:', err);
-      }
+      console.error('Error creating reservation:', err);
+      const errorMessage = err.response?.data?.error || err.response?.data?.details || 'Failed to create reservation. Please try again.';
+      alert(errorMessage);
+      
+      // Log detailed error information
+      console.error('Detailed error:', {
+        status: err.response?.status,
+        data: err.response?.data,
+        config: {
+          url: err.config?.url,
+          method: err.config?.method,
+          data: err.config?.data
+        }
+      });
     }
   };
 
@@ -215,16 +264,25 @@ const Reservations = () => {
   };
 
   const filterReservations = (tab) => {
-    if (!reservations) return [];
+    if (!reservations || !Array.isArray(reservations)) return [];
+    
     const now = new Date();
-    return reservations.filter(reservation => {
-      const reservationDate = parseISO(`${reservation.date}T${reservation.time}`);
-      return tab === 'upcoming' ? isAfter(reservationDate, now) : isBefore(reservationDate, now);
-    }).sort((a, b) => {
-      const dateA = parseISO(`${a.date}T${a.time}`);
-      const dateB = parseISO(`${b.date}T${b.time}`);
-      return tab === 'upcoming' ? dateA - dateB : dateB - dateA;
-    });
+    return reservations
+      .filter(reservation => {
+        if (!reservation.date || !reservation.time) return false;
+        
+        const reservationDate = parseISO(`${reservation.date}T${reservation.time}`);
+        if (tab === 'upcoming') {
+          return isAfter(reservationDate, now) && reservation.status !== 'cancelled';
+        } else {
+          return isBefore(reservationDate, now) || reservation.status === 'cancelled';
+        }
+      })
+      .sort((a, b) => {
+        const dateA = parseISO(`${a.date}T${a.time}`);
+        const dateB = parseISO(`${b.date}T${b.time}`);
+        return tab === 'upcoming' ? dateA - dateB : dateB - dateA;
+      });
   };
 
   const getReservationDateDisplay = (date) => {
@@ -236,6 +294,112 @@ const Reservations = () => {
     if (diffDays === 1) return 'Tomorrow';
     if (diffDays === -1) return 'Yesterday';
     return format(reservationDate, 'MMM dd, yyyy');
+  };
+
+  // Add useEffect to check for pending reservation
+  useEffect(() => {
+    if (isAuthenticated) {
+      const pendingReservation = sessionStorage.getItem('pendingReservation');
+      if (pendingReservation) {
+        try {
+          const reservationData = JSON.parse(pendingReservation);
+          setSelectedDate(parseISO(reservationData.date));
+          setSelectedTime(reservationData.time);
+          setGuests(reservationData.guests);
+          setSpecialRequests(reservationData.specialRequests);
+          setContactInfo(reservationData.contactInfo);
+          // Clear the pending reservation
+          sessionStorage.removeItem('pendingReservation');
+          // Show the order option
+          setShowOrderOption(true);
+        } catch (err) {
+          console.error('Error restoring pending reservation:', err);
+          sessionStorage.removeItem('pendingReservation');
+        }
+      }
+    }
+  }, [isAuthenticated]);
+
+  const renderTimeSlot = (time) => {
+    const slotInfo = timeSlotInfo.find(slot => slot.time === time) || {
+      available: true,
+      availableTables: null,
+      totalTables: null
+    };
+
+    return (
+      <button
+        key={time}
+        type="button"
+        onClick={() => setSelectedTime(time)}
+        disabled={!slotInfo.available}
+        className={`p-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 relative group ${
+          selectedTime === time
+            ? 'bg-primary text-white shadow-md'
+            : slotInfo.available
+            ? 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+        }`}
+      >
+        {time}
+        <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+          {slotInfo.available 
+            ? slotInfo.availableTables 
+              ? `${slotInfo.availableTables} of ${slotInfo.totalTables} tables available`
+              : 'Available'
+            : 'Fully booked'}
+        </span>
+      </button>
+    );
+  };
+
+  // Add this new function to render reservation details
+  const renderReservationDetails = (reservation) => {
+    return (
+      <div
+        key={reservation.id}
+        className="border rounded-lg p-6 hover:shadow-md transition-all duration-200 transform hover:scale-[1.02]"
+      >
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="font-medium text-lg">{reservation.contactInfo?.name}</p>
+            <p className="text-gray-600">
+              {getReservationDateDisplay(reservation.date)} at {reservation.time}
+            </p>
+            <p className="text-gray-600">{reservation.guests} guests</p>
+            {reservation.Order && (
+              <p className="text-gray-600 mt-2">
+                <span className="font-medium">Order ID:</span> {reservation.Order.orderId}
+              </p>
+            )}
+          </div>
+          <span
+            className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
+              reservation.status
+            )}`}
+          >
+            {reservation.status.charAt(0).toUpperCase() + reservation.status.slice(1)}
+          </span>
+        </div>
+
+        {reservation.specialRequests && (
+          <p className="mt-4 text-gray-600 bg-gray-50 p-3 rounded-lg">
+            <span className="font-medium">Special Requests:</span> {reservation.specialRequests}
+          </p>
+        )}
+
+        {reservation.status === 'pending' && activeTab === 'upcoming' && (
+          <div className="mt-4">
+            <button
+              onClick={() => handleCancel(reservation.id)}
+              className="text-red-600 hover:text-red-800 font-medium text-sm bg-red-50 px-4 py-2 rounded-lg transition-colors duration-200"
+            >
+              Cancel Reservation
+            </button>
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -287,28 +451,7 @@ const Reservations = () => {
                   </div>
                 ) : (
                   <div className="grid grid-cols-4 gap-2">
-                    {timeSlots.map((time) => (
-                      <button
-                        key={time}
-                        type="button"
-                        onClick={() => setSelectedTime(time)}
-                        disabled={!isTimeSlotAvailable(time)}
-                        className={`p-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 ${
-                          selectedTime === time
-                            ? 'bg-primary text-white shadow-md'
-                            : isTimeSlotAvailable(time)
-                            ? 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-                            : 'bg-gray-200 text-gray-400 cursor-not-allowed relative group'
-                        }`}
-                      >
-                        {time}
-                        {!isTimeSlotAvailable(time) && (
-                          <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                            Not available
-                          </span>
-                        )}
-                      </button>
-                    ))}
+                    {timeSlots.map(time => renderTimeSlot(time))}
                   </div>
                 )}
               </div>
@@ -444,53 +587,7 @@ const Reservations = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {filterReservations(activeTab).map((reservation) => (
-                    <div
-                      key={reservation.id}
-                      className="border rounded-lg p-6 hover:shadow-md transition-all duration-200 transform hover:scale-[1.02]"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium text-lg">{reservation.contactInfo.name}</p>
-                          <p className="text-gray-600">
-                            {getReservationDateDisplay(reservation.date)} at {reservation.time}
-                          </p>
-                          <p className="text-gray-600">{reservation.guests} guests</p>
-                        </div>
-                        <span
-                          className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
-                            reservation.status
-                          )}`}
-                        >
-                          {reservation.status.charAt(0).toUpperCase() + reservation.status.slice(1)}
-                        </span>
-                      </div>
-                      
-                      {reservation.specialRequests && (
-                        <p className="mt-4 text-gray-600 bg-gray-50 p-3 rounded-lg">
-                          <span className="font-medium">Special Requests:</span> {reservation.specialRequests}
-                        </p>
-                      )}
-                      
-                      {(user?.role === 'admin' || user?.role === 'manager') && (
-                        <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                          <p><span className="font-medium">Email:</span> {reservation.contactInfo.email}</p>
-                          <p><span className="font-medium">Phone:</span> {reservation.contactInfo.phone}</p>
-                        </div>
-                      )}
-                      
-                      {reservation.status === 'pending' && activeTab === 'upcoming' && (
-                        <div className="mt-4">
-                          <button
-                            onClick={() => handleCancel(reservation.id)}
-                            className="text-red-600 hover:text-red-800 font-medium text-sm bg-red-50 px-4 py-2 rounded-lg transition-colors duration-200"
-                          >
-                            Cancel Reservation
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                  {filterReservations(activeTab).map(reservation => renderReservationDetails(reservation))}
                 </div>
               )}
             </div>
@@ -505,6 +602,48 @@ const Reservations = () => {
           <p className="text-sm">Your reservation has been {activeTab === 'upcoming' ? 'updated' : 'created'}.</p>
         </div>
       )}
+
+      {/* Order Option Modal */}
+      {showOrderOption && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full">
+            <h3 className="text-xl font-bold mb-4">Would you like to add food to your reservation?</h3>
+            <p className="text-gray-600 mb-6">
+              You can pre-order food from our menu to be ready at your reserved time.
+            </p>
+            <div className="flex space-x-4">
+              <button
+                onClick={() => {
+                  setShowOrderOption(false);
+                  setShowMenuPopup(true);
+                }}
+                className="flex-1 py-3 px-4 bg-primary text-white rounded-lg hover:bg-primary-dark"
+              >
+                Yes, Add Food
+              </button>
+              <button
+                onClick={() => finalizeReservation(false)}
+                className="flex-1 py-3 px-4 border rounded-lg hover:bg-gray-100"
+              >
+                No, Just Reserve
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Menu Popup */}
+      <MenuOrderPopup
+        isOpen={showMenuPopup}
+        onClose={() => {
+          setShowMenuPopup(false);
+          finalizeReservation(false);
+        }}
+        onOrderComplete={(orderId) => {
+          handleOrderComplete(orderId);
+          finalizeReservation(true);
+        }}
+      />
     </div>
   );
 };

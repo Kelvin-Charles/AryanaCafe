@@ -1,0 +1,26 @@
+RewriteEngine On
+
+# Increase timeout values
+<IfModule mod_proxy.c>
+    ProxyTimeout 600
+    ProxyPassMatch ^/(.*) http://127.0.0.1:5000/$1 [P]
+</IfModule>
+
+# Handle CORS preflight requests
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ $1 [R=200,L]
+
+# Set CORS headers
+Header always set Access-Control-Allow-Origin "*"
+Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, x-public-route"
+Header always set Access-Control-Allow-Credentials "true"
+Header always set Access-Control-Max-Age "3600"
+
+# Set timeout headers
+Header set Connection keep-alive
+Header set Keep-Alive "timeout=600, max=100"
+
+# Handle errors
+ErrorDocument 503 "Sorry, the application is temporarily unavailable. Please try again in a few minutes."
+ErrorDocument 504 "Request timeout. Please try again." 

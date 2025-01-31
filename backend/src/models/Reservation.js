@@ -7,10 +7,9 @@ const Reservation = sequelize.define('Reservation', {
     primaryKey: true,
     autoIncrement: true
   },
-  userId: {
+  UserId: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    field: 'userId',
     references: {
       model: 'users',
       key: 'id'
@@ -37,8 +36,7 @@ const Reservation = sequelize.define('Reservation', {
     defaultValue: 'pending'
   },
   specialRequests: {
-    type: DataTypes.TEXT,
-    allowNull: true
+    type: DataTypes.TEXT
   },
   contactInfo: {
     type: DataTypes.JSON,
@@ -63,33 +61,7 @@ const Reservation = sequelize.define('Reservation', {
   }
 }, {
   tableName: 'reservations',
-  timestamps: true,
-  underscored: false,
-  freezeTableName: true,
-  sync: { alter: false },
-  indexes: [
-    {
-      name: 'fk_reservations_user',
-      fields: ['userId']
-    }
-  ]
+  timestamps: true
 });
-
-// Define associations
-Reservation.associate = (models) => {
-  Reservation.belongsTo(models.User, {
-    foreignKey: 'userId',
-    as: 'user',
-    onDelete: 'CASCADE',
-    onUpdate: 'CASCADE'
-  });
-  
-  Reservation.belongsTo(models.Order, {
-    foreignKey: 'OrderId',
-    as: 'order',
-    onDelete: 'SET NULL',
-    onUpdate: 'CASCADE'
-  });
-};
 
 module.exports = Reservation; 

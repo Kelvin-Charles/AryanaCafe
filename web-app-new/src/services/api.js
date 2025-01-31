@@ -117,10 +117,10 @@ const apiMethods = {
     me: () => makeRequest('/auth/me')
   },
   addresses: {
-    getAll: () => api.get('/api/addresses'),
-    create: (addressData) => api.post('/api/addresses', addressData),
-    update: (id, addressData) => api.put(`/api/addresses/${id}`, addressData),
-    delete: (id) => api.delete(`/api/addresses/${id}`)
+    getAll: () => makeRequest('/addresses', 'get'),
+    create: (addressData) => makeRequest('/addresses', 'post', addressData),
+    update: (id, addressData) => makeRequest(`/addresses/${id}`, 'put', addressData),
+    delete: (id) => makeRequest(`/addresses/${id}`, 'delete')
   },
   menu: {
     getAll: () => makeRequest('/menu', 'get', null, { public: true }),
@@ -143,12 +143,13 @@ const apiMethods = {
     getMyOrders: () => makeRequest('/orders/my-orders', 'get'),
     getActiveOrders: () => makeRequest('/orders/active', 'get'),
     getPendingOrders: () => makeRequest('/orders/pending', 'get'),
-    getCompletedOrders: () => makeRequest('/orders/completed', 'get')
+    getCompletedOrders: () => makeRequest('/orders/completed', 'get'),
+    getTotalSpend: () => makeRequest('/orders/total-spend', 'get')
   },
   reservations: {
     getAll: (options = {}) => makeRequest('/reservations', 'get', null, options),
     getMyReservations: () => makeRequest('/reservations/my-reservations', 'get', null, {
-      handleUnauthorized: false
+      handleUnauthorized: true
     }),
     create: (data) => makeRequest('/reservations', 'post', data),
     update: (id, data) => makeRequest(`/reservations/${id}`, 'put', data),

@@ -54,7 +54,7 @@ async function seedDatabase() {
     // Create sample orders
     const orders = await Order.bulkCreate([
       {
-        userId: users[4].id, // Customer's order
+        UserId: users[4].id, // Customer's order
         customerName: users[4].name,
         customerEmail: users[4].email,
         status: 'delivered',
@@ -66,7 +66,7 @@ async function seedDatabase() {
         createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 days ago
       },
       {
-        userId: users[4].id,
+        UserId: users[4].id,
         customerName: users[4].name,
         customerEmail: users[4].email,
         status: 'preparing',
@@ -82,7 +82,7 @@ async function seedDatabase() {
         createdAt: new Date()
       },
       {
-        userId: users[4].id,
+        UserId: users[4].id,
         customerName: users[4].name,
         customerEmail: users[4].email,
         status: 'pending',
@@ -125,7 +125,7 @@ async function seedDatabase() {
     // Create sample reservations
     await Reservation.bulkCreate([
       {
-        userId: users[4].id,
+        UserId: users[4].id,
         date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
         time: '19:00',
         guests: 4,
@@ -137,7 +137,7 @@ async function seedDatabase() {
         })
       },
       {
-        userId: users[4].id,
+        UserId: users[4].id,
         date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
         time: '20:00',
         guests: 2,
@@ -149,7 +149,7 @@ async function seedDatabase() {
         })
       },
       {
-        userId: users[4].id,
+        UserId: users[4].id,
         date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
         time: '18:30',
         guests: 6,

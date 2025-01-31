@@ -45,7 +45,7 @@ router.get('/', auth, async (req, res) => {
 router.get('/my-orders', auth, async (req, res) => {
   try {
     console.log('Fetching orders for user:', {
-      userId: req.user.id,
+      UserId: req.user.id,
       name: req.user.name,
       email: req.user.email,
       role: req.user.role
@@ -53,12 +53,12 @@ router.get('/my-orders', auth, async (req, res) => {
 
     // First, check if any orders exist for this user
     const orderCount = await Order.count({
-      where: { userId: req.user.id }
+      where: { UserId: req.user.id }
     });
     console.log('Total orders found in database:', orderCount);
 
     const orders = await Order.findAll({
-      where: { userId: req.user.id },
+      where: { UserId: req.user.id },
       include: [{
         model: OrderItem,
         as: 'items',
@@ -198,7 +198,7 @@ router.patch('/:id/status', auth, async (req, res) => {
     }
 
     // Only admin can update any order status
-    if (req.user.role !== 'admin' && order.userId !== req.user.id) {
+    if (req.user.role !== 'admin' && order.UserId !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
@@ -233,7 +233,7 @@ router.get('/:id', auth, async (req, res) => {
     }
 
     // Only admin or order owner can view order details
-    if (req.user.role !== 'admin' && order.userId !== req.user.id) {
+    if (req.user.role !== 'admin' && order.UserId !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 

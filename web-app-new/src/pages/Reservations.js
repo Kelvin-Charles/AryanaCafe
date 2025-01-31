@@ -74,17 +74,21 @@ const Reservations = () => {
       setLoading(true);
       setError(null);
       console.log('Fetching reservations for user:', user?.id);
+      const token = localStorage.getItem('token');
+      console.log('Current auth token:', token ? 'exists' : 'not found');
+      
       const response = await api.reservations.getMyReservations();
       console.log('Received reservations:', response.data);
       
-      if (response.data) {
-      setReservations(response.data);
+      if (Array.isArray(response.data)) {
+        setReservations(response.data);
       } else {
+        console.log('No reservations found or invalid response:', response.data);
         setReservations([]);
       }
     } catch (err) {
       console.error('Error fetching reservations:', err);
-      setError('Failed to fetch reservations');
+      setError('Failed to fetch reservations. Please try again.');
       setReservations([]);
     } finally {
       setLoading(false);
@@ -168,36 +172,27 @@ const Reservations = () => {
 
   const finalizeReservation = async (withOrder = false) => {
     try {
-      if (!isAuthenticated || !user?.id) {
-        alert('You must be logged in to make a reservation');
-        return;
-      }
+      console.log('Creating reservation with data:', {
+        date: format(selectedDate, 'yyyy-MM-dd'),
+        time: selectedTime,
+        guests,
+        userId: user?.id,
+        OrderId: orderId
+      });
 
       const reservationData = {
         date: format(selectedDate, 'yyyy-MM-dd'),
         time: selectedTime,
-        guests: parseInt(guests, 10),
-        specialRequests: specialRequests || '',
+        guests,
+        specialRequests,
         contactInfo: {
-          name: contactInfo.name || user.name,
-          email: contactInfo.email || user.email,
-          phone: contactInfo.phone || ''
-        }
+          name: contactInfo.name,
+          email: contactInfo.email,
+          phone: contactInfo.phone
+        },
+        OrderId: orderId,
+        userId: user?.id
       };
-
-      // Only include OrderId if it exists and is not null
-      if (orderId) {
-        reservationData.OrderId = orderId;
-      }
-
-      console.log('Creating reservation with data:', {
-        ...reservationData,
-        userId: user.id,
-        userInfo: {
-          name: user.name,
-          email: user.email
-        }
-      });
 
       const response = await api.reservations.create(reservationData);
       console.log('Reservation created:', response.data);
@@ -210,19 +205,7 @@ const Reservations = () => {
       setOrderId(null);
     } catch (err) {
       console.error('Error creating reservation:', err);
-      const errorMessage = err.response?.data?.error || err.response?.data?.details || 'Failed to create reservation. Please try again.';
-      alert(errorMessage);
-      
-      // Log detailed error information
-      console.error('Detailed error:', {
-        status: err.response?.status,
-        data: err.response?.data,
-        config: {
-          url: err.config?.url,
-          method: err.config?.method,
-          data: err.config?.data
-        }
-      });
+      alert('Failed to create reservation. Please try again.');
     }
   };
 

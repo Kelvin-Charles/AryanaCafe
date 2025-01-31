@@ -45,17 +45,14 @@ router.get('/', adminAuth, async (req, res) => {
 router.get('/my-reservations', auth, async (req, res) => {
   try {
     console.log('Fetching reservations for user:', {
-      userId: req.user.id,
+      UserId: req.user.id,
       name: req.user.name,
       email: req.user.email
     });
 
     const reservations = await Reservation.findAll({
       where: { 
-        userId: req.user.id,
-        status: {
-          [Op.ne]: 'cancelled'
-        }
+        UserId: req.user.id
       },
       include: [{
         model: Order,
@@ -65,7 +62,7 @@ router.get('/my-reservations', auth, async (req, res) => {
           include: [MenuItem]
         }]
       }],
-      order: [['date', 'DESC']]
+      order: [['date', 'DESC'], ['time', 'ASC']]
     });
 
     console.log('Found reservations:', {
@@ -73,7 +70,23 @@ router.get('/my-reservations', auth, async (req, res) => {
       reservationIds: reservations.map(r => r.id)
     });
 
-    res.json(reservations);
+    // Transform the data to include only necessary information
+    const transformedReservations = reservations.map(reservation => ({
+      id: reservation.id,
+      date: reservation.date,
+      time: reservation.time,
+      guests: reservation.guests,
+      status: reservation.status,
+      specialRequests: reservation.specialRequests,
+      contactInfo: reservation.contactInfo,
+      Order: reservation.Order ? {
+        id: reservation.Order.id,
+        status: reservation.Order.status,
+        items: reservation.Order.items
+      } : null
+    }));
+
+    res.json(transformedReservations);
   } catch (error) {
     console.error('Error fetching user reservations:', error);
     res.status(500).json({ error: 'Failed to fetch reservations' });
@@ -83,13 +96,8 @@ router.get('/my-reservations', auth, async (req, res) => {
 // Create reservation
 router.post('/', auth, async (req, res) => {
   try {
-    const userId = req.user.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'User ID is required' });
-    }
-
     console.log('Creating reservation with data:', {
-      userId,
+      UserId: req.user.id,
       ...req.body,
       userInfo: {
         name: req.user.name,
@@ -98,18 +106,6 @@ router.post('/', auth, async (req, res) => {
     });
 
     const { date, time, guests, specialRequests, contactInfo, OrderId } = req.body;
-
-    // Validate required fields
-    if (!date || !time || !guests || !contactInfo) {
-      console.log('Missing required fields:', { date, time, guests, contactInfo });
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    // Validate contact info
-    if (!contactInfo.name || !contactInfo.email) {
-      console.log('Invalid contact info:', contactInfo);
-      return res.status(400).json({ error: 'Name and email are required in contact info' });
-    }
 
     // Check if the time slot is available
     const existingReservation = await Reservation.findOne({
@@ -131,29 +127,21 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ error: 'This time slot is already booked' });
     }
 
-    // Create the reservation with explicit userId
-    const reservationData = {
-      userId: req.user.id, // Make sure to use req.user.id
+    // Create the reservation
+    const reservation = await Reservation.create({
+      UserId: req.user.id,
       date,
       time,
-      guests: parseInt(guests, 10), // Ensure guests is a number
-      specialRequests: specialRequests || '',
-      contactInfo: {
-        name: contactInfo.name || req.user.name,
-        email: contactInfo.email || req.user.email,
-        phone: contactInfo.phone || ''
-      },
-      OrderId: OrderId || null,
+      guests,
+      specialRequests,
+      contactInfo,
+      OrderId,
       status: 'pending'
-    };
-
-    console.log('Attempting to create reservation with data:', reservationData);
-
-    const reservation = await Reservation.create(reservationData);
+    });
 
     console.log('Reservation created successfully:', {
       id: reservation.id,
-      userId: reservation.userId,
+      UserId: reservation.UserId,
       date: reservation.date,
       time: reservation.time,
       OrderId: reservation.OrderId
@@ -173,25 +161,8 @@ router.post('/', auth, async (req, res) => {
 
     res.status(201).json(completeReservation);
   } catch (error) {
-    console.error('Detailed error in create reservation:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-      errors: error.errors // For Sequelize validation errors
-    });
-
-    if (error.name === 'SequelizeValidationError') {
-      return res.status(400).json({ error: error.message });
-    }
-
-    if (error.name === 'SequelizeForeignKeyConstraintError') {
-      return res.status(400).json({ error: 'Invalid user ID or order ID' });
-    }
-
-    res.status(500).json({ 
-      error: 'Failed to create reservation',
-      details: error.message
-    });
+    console.error('Error creating reservation:', error);
+    res.status(500).json({ error: 'Failed to create reservation' });
   }
 });
 
@@ -218,7 +189,7 @@ router.patch('/:id/cancel', auth, async (req, res) => {
     const reservation = await Reservation.findOne({
       where: {
         id: req.params.id,
-        userId: req.user.id
+        UserId: req.user.id
       }
     });
 

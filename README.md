@@ -74,4 +74,4 @@ Special thanks to Miss Aryana from 3TS Company for the vision and guidance in cr
 
 ---
 
-© 2024 PearK Tech. All rights reserved.
+© 2025 PearK Tech. All rights reserved.

@@ -1,6 +1,6 @@
 # Aryana Cafe Management System
 
-A comprehensive digital solution for modernizing restaurant, cafe, and small hotel operations in Tanzania. Inspired by Miss Aryana (3TS Company) and developed by PearK Tech.
+A comprehensive digital solution for modernizing restaurant, cafe, and small hotel operations in Tanzania. Inspired by Miss Aryana (3TS Company) and developed by PearlK Tech.
 
 ## Overview
 
@@ -66,7 +66,7 @@ For support or inquiries, please contact:
 
 ## About Us
 
-**PearK Tech** specializes in developing innovative solutions for the Tanzanian market. Aryana Cafe Management System was conceived through collaboration with Miss Aryana from 3TS Company, combining local business insight with modern technology solutions.
+**PearlK Tech** specializes in developing innovative solutions for the Tanzanian market. Aryana Cafe Management System was conceived through collaboration with Miss Aryana from 3TS Company, combining local business insight with modern technology solutions.
 
 ## Acknowledgments
 
@@ -74,4 +74,4 @@ Special thanks to Miss Aryana from 3TS Company for the vision and guidance in cr
 
 ---
 
-© 2025 PearK Tech. All rights reserved.
+© 2025 PearlK Tech. All rights reserved.
